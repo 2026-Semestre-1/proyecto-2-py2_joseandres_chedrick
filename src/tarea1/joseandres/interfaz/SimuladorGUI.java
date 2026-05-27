@@ -37,7 +37,7 @@ public class SimuladorGUI extends JFrame {
 
     private int pidActualVisual = 1;
     private final Map<Integer, Color> coloresPID = new HashMap<>();
-  
+
     private DefaultTableModel modeloMemoria, modeloDisco, modeloProcesos;
     private JTable tablaMemoriaFisica;
     private JTable tablaDisco;
@@ -59,11 +59,11 @@ public class SimuladorGUI extends JFrame {
 
     private final Map<Integer, Color> coloresProcesos = new HashMap<>();
     private final Color[] paletaProcesos = {
-        new Color(100, 150, 255),
-        new Color(255, 120, 120),
-        new Color(120, 255, 120),
-        new Color(200, 140, 255),
-        new Color(255, 180, 90)
+            new Color(100, 150, 255),
+            new Color(255, 120, 120),
+            new Color(120, 255, 120),
+            new Color(200, 140, 255),
+            new Color(255, 180, 90)
     };
 
     private final Color COLOR_FONDO = new Color(24, 24, 24);
@@ -84,7 +84,7 @@ public class SimuladorGUI extends JFrame {
         this.disco = kernel.getDisco();
 
         this.dispatcher = new Dispatcher(this.memoria);
-        this.cpu = new Cpu(this.memoria, this.dispatcher, this.disco, this.kernel, this);
+        this.cpu = new Cpu(this.memoria, this.dispatcher, this.kernel, this);
 
         this.renderizadorMemoria = new ColorRowRenderer(memoria.getInicioUsuario(), memoria.getInicioUsuario());
         this.renderizadorProcesos = new ProcesoTableRenderer();
@@ -143,13 +143,13 @@ public class SimuladorGUI extends JFrame {
         gbc.fill = GridBagConstraints.BOTH;
         gbc.insets = new Insets(5, 5, 5, 5);
 
-        modeloMemoria = new DefaultTableModel(new String[]{"Dir", "Contenido"}, 0) {
+        modeloMemoria = new DefaultTableModel(new String[] { "Dir", "Contenido" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-//s
+        // s
         tablaMemoriaFisica = crearTablaOscura(modeloMemoria);
         tablaMemoriaFisica.setDefaultRenderer(Object.class, renderizadorMemoria);
 
@@ -160,14 +160,14 @@ public class SimuladorGUI extends JFrame {
         gbc.weighty = 1.0;
         panelCentral.add(crearPanelConTitulo(new JScrollPane(tablaMemoriaFisica), "MEMORIA RAM (FÍSICA)"), gbc);
 
-        modeloDisco = new DefaultTableModel(new String[]{"Sector", "Dato"}, 0) {
+        modeloDisco = new DefaultTableModel(new String[] { "Sector", "Dato" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
 
-        modeloProcesos = new DefaultTableModel(new String[]{"ID", "Nombre", "Estado"}, 0) {
+        modeloProcesos = new DefaultTableModel(new String[] { "ID", "Nombre", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -282,11 +282,6 @@ public class SimuladorGUI extends JFrame {
 
         timerSimulacion = new Timer(sliderVelocidad.getValue(), e -> {
             boolean continua = ejecutarPasoAPaso();
-             if (cpu.estaEsperandoEntradaInt09()) {
-                timerSimulacion.stop();
-                return;
-            }
-            
             if (!continua) {
                 timerSimulacion.stop();
             }
@@ -297,28 +292,19 @@ public class SimuladorGUI extends JFrame {
     }
 
     private boolean ejecutarPasoAPaso() {
-        if (cpu == null) {
+        if (cpu == null)
             return false;
-        }
 
         boolean continua = cpu.ejecutarSiguientePaso();
-
         bcpActual = cpu.getProcesoActual();
-
         actualizarLabelsBCP();
         actualizarTablas();
 
-        // Si el CPU quedó esperando entrada, no seguimos corriendo automático
-        if (cpu.estaEsperandoEntradaInt09()) {
-            return true;
-        }
-
         if (!continua) {
             imprimirEnTerminal("No hay más procesos para ejecutar.");
-        } else if (bcpActual != null && !cpu.estaEsperandoEntradaInt09()) {
+        } else if (bcpActual != null) {
             imprimirEnTerminal("Ejecutando PID " + bcpActual.id + " - " + bcpActual.nombreProceso);
         }
-        
 
         return continua;
     }
@@ -341,8 +327,7 @@ public class SimuladorGUI extends JFrame {
                             this,
                             "Memoria insuficiente para cargar: " + f.getName(),
                             "Error de carga",
-                            JOptionPane.ERROR_MESSAGE
-                    );
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
 
@@ -382,8 +367,7 @@ public class SimuladorGUI extends JFrame {
                     this,
                     "Debe ingresar un valor.",
                     "Entrada vacía",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -397,7 +381,7 @@ public class SimuladorGUI extends JFrame {
         btnEnviarEntrada.setEnabled(false);
         lblPromptEntrada.setText("Esperando instrucción de entrada...");
 
-        //Procesa de inmediato la entrada enviada
+        // Procesa de inmediato la entrada enviada
         ejecutarPasoAPaso();
     }
 
@@ -436,13 +420,14 @@ public class SimuladorGUI extends JFrame {
             lblDX.setText("DX: ---");
         }
     }
-    //Actualiza la tabla del disco
+
+    // Actualiza la tabla del disco
     private void actualizarTablas() {
         modeloMemoria.setRowCount(0);
         for (int i = 0; i < memoria.getTamanoTotal(); i++) {
             String raw = memoria.leerCelda(i);
             String traducida = traducirInstruccion(raw);
-            modeloMemoria.addRow(new Object[]{i, traducida});
+            modeloMemoria.addRow(new Object[] { i, traducida });
         }
 
         modeloDisco.setRowCount(0);
@@ -450,16 +435,16 @@ public class SimuladorGUI extends JFrame {
             String dato = disco.leer(i);
 
             if (i < disco.getEspacioIndice()) {
-                modeloDisco.addRow(new Object[]{i, dato});
+                modeloDisco.addRow(new Object[] { i, dato });
             } else {
-                modeloDisco.addRow(new Object[]{i, traducirInstruccion(dato)});
+                modeloDisco.addRow(new Object[] { i, traducirInstruccion(dato) });
             }
         }
 
         modeloProcesos.setRowCount(0);
         for (BCP p : kernel.getListaProcesos()) {
             obtenerColorProceso(p.id);
-            modeloProcesos.addRow(new Object[]{p.id, p.nombreProceso, p.estado});
+            modeloProcesos.addRow(new Object[] { p.id, p.nombreProceso, p.estado });
         }
 
         int direccionActual = cpu.getDireccionIRActual();
@@ -497,8 +482,7 @@ public class SimuladorGUI extends JFrame {
         p.setOpaque(false);
         TitledBorder tb = BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY),
-                titulo
-        );
+                titulo);
         tb.setTitleColor(Color.LIGHT_GRAY);
         p.setBorder(tb);
         p.add(comp);
@@ -524,8 +508,7 @@ public class SimuladorGUI extends JFrame {
                     tamanoRamConfig,
                     porcentajeKernelConfig,
                     tamanoDiscoConfig,
-                    porcentajeIndiceDiscoConfig
-            );
+                    porcentajeIndiceDiscoConfig);
             nueva.setVisible(true);
         });
     }
@@ -665,8 +648,7 @@ public class SimuladorGUI extends JFrame {
                 boolean hasFocus, int row, int column) {
 
             Component c = super.getTableCellRendererComponent(
-                    table, value, isSelected, hasFocus, row, column
-            );
+                    table, value, isSelected, hasFocus, row, column);
 
             try {
                 int pid = Integer.parseInt(table.getValueAt(row, 0).toString());
