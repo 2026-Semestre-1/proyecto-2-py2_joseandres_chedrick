@@ -15,7 +15,7 @@ import tarea1.joseandres.memoria.Memoria;
 public class Dispatcher {
 
     private Memoria ram;
-    private final int TAMANO_BLOQUE_BCP = 14; // Espacio fijo por proceso
+    private final int TAMANO_BLOQUE_BCP = 14; // Es pacio fijo por proceso
 
     public Dispatcher(Memoria ram) {
         this.ram = ram;

@@ -23,7 +23,7 @@ import tarea1.joseandres.interfaz.SimuladorGUI;
 public class Cpu {
 
     private Memoria memoria;
-    private Dispatcher dispatcher; // Para actualizar la RAM del Kernel
+    private Dispatcher dispatcher; //  Para actualizar la RAM del Kernel
 
     private Map<String, Instruccion> operaciones;
     private Map<String, Integer> pesosInstrucciones; //Inst, pesos

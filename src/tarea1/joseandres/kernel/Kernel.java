@@ -18,7 +18,7 @@ import tarea1.joseandres.proceso.BCP;
 import tarea1.joseandres.loader.Loader;
 import tarea1.joseandres.algoritmos.PlanificadorFCFS;
 
-//Gestionamos los recusos y los procesos. Decidimos si un proceso entra o no al sistema
+//Gestionamos los recusos y los procesos. Decidi mos si un proceso entra o no al sistema
 //Usamos como base la .config 
 public class Kernel {
     private Memoria ram;

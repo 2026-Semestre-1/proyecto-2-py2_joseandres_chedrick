@@ -19,7 +19,7 @@ public class Memoria {
     private int tamanoTotal;
     private int inicioUsuario;
 
-    // Constructor que acepta el tamaño segun el config.json
+    // Constructor que acepta  el tamaño segun el config.json
     public Memoria(int tamano, int porcentajeKernel) {
         this.tamanoTotal = tamano;
         //Y ahora el % viene dado por cnfig.json

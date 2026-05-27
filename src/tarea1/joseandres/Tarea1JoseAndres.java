@@ -22,7 +22,7 @@ public class Tarea1JoseAndres {
         int diskIndexPerc = 10;
         
 
-        try {
+        try { 
             String contenidoJson = Files.readString(Paths.get("src/tarea1/joseandres/config/config.json"));
 
             ramSize = extraerValorEntero(contenidoJson, "ram_size");

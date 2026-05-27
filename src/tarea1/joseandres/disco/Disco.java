@@ -10,7 +10,7 @@ package tarea1.joseandres.disco;
  */
 public class Disco {
 
-    private String[] almacenamiento; //Donde se guardaran todos los datos del disco
+    private String[] almacenamiento; //Donde s e guardaran todos los datos del disco
     private final int tamanoTotal;
     private int espacioIndice;
     private int punteroIndiceActual = 0; // Para saber donde poner el próximo nombre

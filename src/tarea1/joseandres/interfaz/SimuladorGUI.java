@@ -37,7 +37,7 @@ public class SimuladorGUI extends JFrame {
 
     private int pidActualVisual = 1;
     private final Map<Integer, Color> coloresPID = new HashMap<>();
-
+  
     private DefaultTableModel modeloMemoria, modeloDisco, modeloProcesos;
     private JTable tablaMemoriaFisica;
     private JTable tablaDisco;
@@ -149,7 +149,7 @@ public class SimuladorGUI extends JFrame {
                 return false;
             }
         };
-
+//s
         tablaMemoriaFisica = crearTablaOscura(modeloMemoria);
         tablaMemoriaFisica.setDefaultRenderer(Object.class, renderizadorMemoria);
 
