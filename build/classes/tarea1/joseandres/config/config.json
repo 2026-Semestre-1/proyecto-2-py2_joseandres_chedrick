@@ -1,0 +1,12 @@
+{
+  "hardware": {
+    "ram_size": 512,
+    "disk_size": 512,
+    "kernel_reserve_percentage": 20,
+    "disk_index_percentage": 10
+  },
+  "sistema": {
+    "max_procesos": 5,
+    "algoritmo_planificacion": "FCFS"
+  }
+} 
