@@ -6,6 +6,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.RenderingHints;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -54,6 +56,9 @@ public class SimuladorGUI extends JFrame {
     private JButton btnEnviarEntrada;
     private JSlider sliderVelocidad;
 
+    // Panel de fragmentación
+    private JPanel panelFragmentacion;
+
     private String ultimaEntrada = null;
     private boolean esperandoEntrada = false;
 
@@ -82,7 +87,6 @@ public class SimuladorGUI extends JFrame {
         this.kernel = new Kernel(tamanoRam, tamanoDisco, porcentajeKernel, porcentajeIndiceDisco);
         this.memoria = kernel.getRam();
         this.disco = kernel.getDisco();
-
         this.dispatcher = new Dispatcher(this.memoria);
         this.cpu = new Cpu(this.memoria, this.dispatcher, this.kernel, this);
 
@@ -94,14 +98,18 @@ public class SimuladorGUI extends JFrame {
         actualizarLabelsBCP();
     }
 
+    // =========================================================================
+    // CONFIGURACIÓN DE VENTANA
+    // =========================================================================
     private void configurarVentana() {
         setTitle("S.O. MiniPC - Gestión de Procesos | Jose Andrés Solano");
-        setSize(1280, 800);
+        setSize(1600, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         getContentPane().setBackground(COLOR_FONDO);
         setLayout(new BorderLayout(10, 10));
 
+        // ── Barra de botones ─────────────────────────────────────────────────
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         panelBotones.setBackground(COLOR_PANEL);
 
@@ -137,36 +145,47 @@ public class SimuladorGUI extends JFrame {
 
         add(panelBotones, BorderLayout.NORTH);
 
+        // ── Panel central con GridBagLayout ──────────────────────────────────
         JPanel panelCentral = new JPanel(new GridBagLayout());
         panelCentral.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.BOTH;
         gbc.insets = new Insets(5, 5, 5, 5);
 
+        // ----- Columna 0: Memoria RAM ----------------------------------------
         modeloMemoria = new DefaultTableModel(new String[] { "Dir", "Contenido" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        // s
         tablaMemoriaFisica = crearTablaOscura(modeloMemoria);
         tablaMemoriaFisica.setDefaultRenderer(Object.class, renderizadorMemoria);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridheight = 2;
-        gbc.weightx = 0.30;
+        gbc.weightx = 0.20;
         gbc.weighty = 1.0;
         panelCentral.add(crearPanelConTitulo(new JScrollPane(tablaMemoriaFisica), "MEMORIA RAM (FÍSICA)"), gbc);
 
+        // ----- Columna 1: Panel de Fragmentación -----------------------------
+        panelFragmentacion = new JPanel(new BorderLayout(0, 8));
+        panelFragmentacion.setOpaque(false);
+
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.gridheight = 2;
+        gbc.weightx = 0.16;
+        panelCentral.add(crearPanelConTitulo(panelFragmentacion, "FRAGMENTACIÓN"), gbc);
+
+        // ----- Columna 2: Disco + Procesos -----------------------------------
         modeloDisco = new DefaultTableModel(new String[] { "Sector", "Dato" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-
         modeloProcesos = new DefaultTableModel(new String[] { "ID", "Nombre", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -183,12 +202,13 @@ public class SimuladorGUI extends JFrame {
         panelMedio.add(crearPanelConTitulo(new JScrollPane(tablaDisco), "DISCO DURO"));
         panelMedio.add(crearPanelConTitulo(new JScrollPane(tablaProcesos), "PROCESOS"));
 
-        gbc.gridx = 1;
+        gbc.gridx = 2;
         gbc.gridy = 0;
         gbc.gridheight = 2;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.30;
         panelCentral.add(panelMedio, gbc);
 
+        // ----- Columna 3: Estado CPU + Terminal ------------------------------
         JPanel panelDerecho = new JPanel(new BorderLayout(0, 10));
         panelDerecho.setOpaque(false);
 
@@ -254,10 +274,10 @@ public class SimuladorGUI extends JFrame {
         panelDerecho.add(crearPanelConTitulo(panelRegistros, "ESTADO CPU"), BorderLayout.NORTH);
         panelDerecho.add(crearPanelConTitulo(panelTerminalCompleto, "TERMINAL"), BorderLayout.CENTER);
 
-        gbc.gridx = 2;
+        gbc.gridx = 3;
         gbc.gridy = 0;
         gbc.gridheight = 2;
-        gbc.weightx = 0.35;
+        gbc.weightx = 0.34;
         panelCentral.add(panelDerecho, gbc);
 
         add(panelCentral, BorderLayout.CENTER);
@@ -267,6 +287,181 @@ public class SimuladorGUI extends JFrame {
         add(lblFooter, BorderLayout.SOUTH);
     }
 
+    // =========================================================================
+    // PANEL DE FRAGMENTACIÓN
+    // =========================================================================
+    private void actualizarPanelFragmentacion() {
+        panelFragmentacion.removeAll();
+
+        int total = memoria.getTamanoTotal();
+        int limKernel = memoria.getInicioUsuario();
+        final int ALTO_CELDA = 18; // px por celda — más grueso para distinguir mejor
+        final int ANCHO_BLOQUE = 52;
+
+        // ── Panel interior que contiene bloques + etiquetas ──────────────────
+        // Altura total = una fila por celda
+        int alturaTotal = total * ALTO_CELDA;
+
+        JPanel filasPanel = new JPanel(null); // layout absoluto
+        filasPanel.setBackground(new Color(28, 28, 28));
+        filasPanel.setPreferredSize(new Dimension(ANCHO_BLOQUE + 38, alturaTotal));
+
+        for (int i = 0; i < total; i++) {
+            final int idx = i;
+            int y = i * ALTO_CELDA;
+
+            // Color del bloque
+            Color colorBloque;
+            String etiqueta;
+            if (i < limKernel) {
+                colorBloque = new Color(55, 70, 130);
+                etiqueta = "K";
+            } else {
+                BCP dueño = buscarProcesoPorDireccion(i);
+                if (dueño != null && !dueño.estado.equals("TERMINADO")) {
+                    colorBloque = obtenerColorProceso(dueño.id);
+                    etiqueta = "P" + dueño.id;
+                } else {
+                    colorBloque = new Color(55, 55, 55);
+                    etiqueta = "";
+                }
+            }
+
+            // Bloque de color
+            final Color colorFinal = colorBloque;
+            final String etqFinal = etiqueta;
+            JPanel bloque = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2 = (Graphics2D) g;
+                    g2.setColor(colorFinal);
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+
+                    // borde inferior para separar celdas
+                    g2.setColor(new Color(0, 0, 0, 100));
+                    g2.drawLine(0, getHeight() - 1, getWidth(), getHeight() - 1);
+
+                    // etiqueta dentro del bloque
+                    if (!etqFinal.isEmpty()) {
+                        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                        g2.setColor(new Color(0, 0, 0, 160));
+                        g2.setFont(new Font("SansSerif", Font.BOLD, 9));
+                        FontMetrics fm = g2.getFontMetrics();
+                        int tx = (getWidth() - fm.stringWidth(etqFinal)) / 2;
+                        int ty = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                        g2.drawString(etqFinal, tx, ty);
+                    }
+
+                    // línea de PC actual
+                    if (bcpActual != null && bcpActual.PC == idx) {
+                        g2.setColor(Color.WHITE);
+                        g2.setStroke(new BasicStroke(2f));
+                        g2.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+                    }
+                }
+            };
+            bloque.setBounds(0, y, ANCHO_BLOQUE, ALTO_CELDA);
+            bloque.setOpaque(false);
+            filasPanel.add(bloque);
+
+            // Etiqueta de dirección a la derecha del bloque
+            JLabel lblDir = new JLabel(String.valueOf(i));
+            lblDir.setFont(new Font("Monospaced", Font.PLAIN, 9));
+            lblDir.setForeground(new Color(160, 160, 160));
+            lblDir.setBounds(ANCHO_BLOQUE + 3, y + 1, 34, ALTO_CELDA - 2);
+            filasPanel.add(lblDir);
+        }
+
+        // ── Scroll sobre el panel de bloques ─────────────────────────────────
+        JScrollPane scrollBloques = new JScrollPane(filasPanel,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollBloques.setBorder(null);
+        scrollBloques.getViewport().setBackground(new Color(28, 28, 28));
+        scrollBloques.getVerticalScrollBar().setUnitIncrement(ALTO_CELDA);
+
+        // ── Leyenda ──────────────────────────────────────────────────────────
+        JPanel leyenda = new JPanel();
+        leyenda.setLayout(new BoxLayout(leyenda, BoxLayout.Y_AXIS));
+        leyenda.setBackground(new Color(36, 36, 36));
+        leyenda.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        JLabel titLeyenda = new JLabel("Leyenda");
+        titLeyenda.setForeground(Color.LIGHT_GRAY);
+        titLeyenda.setFont(new Font("SansSerif", Font.BOLD, 11));
+        titLeyenda.setAlignmentX(Component.LEFT_ALIGNMENT);
+        leyenda.add(titLeyenda);
+        leyenda.add(Box.createVerticalStrut(8));
+
+        leyenda.add(crearItemLeyenda(new Color(55, 70, 130), "Kernel",
+                "dir 0–" + (limKernel - 1)));
+        leyenda.add(Box.createVerticalStrut(5));
+
+        leyenda.add(crearItemLeyenda(new Color(55, 55, 55), "Libre", ""));
+        leyenda.add(Box.createVerticalStrut(5));
+
+        for (BCP p : kernel.getListaProcesos()) {
+            if (!p.estado.equals("TERMINADO")) {
+                Color c = obtenerColorProceso(p.id);
+                int base = p.getDireccionBase();
+                int fin = base + p.getAlcance() - 1;
+                leyenda.add(crearItemLeyenda(c,
+                        "PID " + p.id + " — " + p.nombreProceso,
+                        "dir " + base + "–" + fin));
+                leyenda.add(Box.createVerticalStrut(5));
+            }
+        }
+
+        leyenda.add(Box.createVerticalGlue());
+
+        JScrollPane scrollLeyenda = new JScrollPane(leyenda);
+        scrollLeyenda.setBorder(null);
+        scrollLeyenda.setOpaque(false);
+        scrollLeyenda.getViewport().setOpaque(false);
+
+        // ── Contenedor interno ────────────────────────────────────────────────
+        JPanel contenedor = new JPanel(new BorderLayout(6, 0));
+        contenedor.setOpaque(false);
+        contenedor.add(scrollBloques, BorderLayout.WEST);
+        contenedor.add(scrollLeyenda, BorderLayout.CENTER);
+
+        panelFragmentacion.add(contenedor, BorderLayout.CENTER);
+        panelFragmentacion.revalidate();
+        panelFragmentacion.repaint();
+    }
+
+    private JPanel crearItemLeyenda(Color color, String nombre, String rango) {
+        JPanel item = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        item.setOpaque(false);
+        item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        item.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel cuadro = new JPanel();
+        cuadro.setBackground(color);
+        cuadro.setPreferredSize(new Dimension(12, 12));
+        cuadro.setBorder(BorderFactory.createLineBorder(new Color(90, 90, 90), 1));
+
+        JLabel lblNombre = new JLabel(nombre);
+        lblNombre.setForeground(Color.WHITE);
+        lblNombre.setFont(new Font("SansSerif", Font.PLAIN, 11));
+
+        item.add(cuadro);
+        item.add(lblNombre);
+
+        if (rango != null && !rango.isEmpty()) {
+            JLabel lblRango = new JLabel(rango);
+            lblRango.setForeground(new Color(150, 150, 150));
+            lblRango.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            item.add(lblRango);
+        }
+
+        return item;
+    }
+
+    // =========================================================================
+    // EJECUCIÓN
+    // =========================================================================
     private void estilizarBotonSimple(JButton btn) {
         btn.setBackground(new Color(70, 70, 70));
         btn.setForeground(Color.WHITE);
@@ -318,16 +513,13 @@ public class SimuladorGUI extends JFrame {
 
             for (File f : archivos) {
                 boolean cargado = kernel.cargarProceso(f.getAbsolutePath());
-
                 if (cargado) {
                     imprimirEnTerminal("CARGADO: " + f.getName());
                 } else {
                     imprimirEnTerminal("ERROR al cargar: " + f.getName());
-                    JOptionPane.showMessageDialog(
-                            this,
+                    JOptionPane.showMessageDialog(this,
                             "Memoria insuficiente para cargar: " + f.getName(),
-                            "Error de carga",
-                            JOptionPane.ERROR_MESSAGE);
+                            "Error de carga", JOptionPane.ERROR_MESSAGE);
                 }
             }
 
@@ -337,6 +529,9 @@ public class SimuladorGUI extends JFrame {
         }
     }
 
+    // =========================================================================
+    // TERMINAL
+    // =========================================================================
     public void imprimirEnTerminal(String texto) {
         areaTerminal.append("> " + texto + "\n");
         areaTerminal.setCaretPosition(areaTerminal.getDocument().getLength());
@@ -345,29 +540,22 @@ public class SimuladorGUI extends JFrame {
     public void solicitarEntrada(String mensaje) {
         esperandoEntrada = true;
         ultimaEntrada = null;
-
         lblPromptEntrada.setText(mensaje);
         campoEntrada.setText("");
         campoEntrada.setEnabled(true);
         btnEnviarEntrada.setEnabled(true);
         campoEntrada.requestFocus();
-
         imprimirEnTerminal("[ENTRADA] " + mensaje);
     }
 
     private void enviarEntradaTerminal() {
-        if (!esperandoEntrada) {
+        if (!esperandoEntrada)
             return;
-        }
 
         String texto = campoEntrada.getText().trim();
-
         if (texto.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Debe ingresar un valor.",
-                    "Entrada vacía",
-                    JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Debe ingresar un valor.",
+                    "Entrada vacía", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -381,7 +569,6 @@ public class SimuladorGUI extends JFrame {
         btnEnviarEntrada.setEnabled(false);
         lblPromptEntrada.setText("Esperando instrucción de entrada...");
 
-        // Procesa de inmediato la entrada enviada
         ejecutarPasoAPaso();
     }
 
@@ -399,6 +586,9 @@ public class SimuladorGUI extends JFrame {
         return esperandoEntrada;
     }
 
+    // =========================================================================
+    // ACTUALIZAR UI
+    // =========================================================================
     private void actualizarLabelsBCP() {
         bcpActual = cpu.getProcesoActual();
 
@@ -419,9 +609,12 @@ public class SimuladorGUI extends JFrame {
             lblCX.setText("CX: ---");
             lblDX.setText("DX: ---");
         }
+
+        if (panelFragmentacion != null) {
+            actualizarPanelFragmentacion();
+        }
     }
 
-    // Actualiza la tabla del disco
     private void actualizarTablas() {
         modeloMemoria.setRowCount(0);
         for (int i = 0; i < memoria.getTamanoTotal(); i++) {
@@ -433,7 +626,6 @@ public class SimuladorGUI extends JFrame {
         modeloDisco.setRowCount(0);
         for (int i = 0; i < disco.getTamanoTotal(); i++) {
             String dato = disco.leer(i);
-
             if (i < disco.getEspacioIndice()) {
                 modeloDisco.addRow(new Object[] { i, dato });
             } else {
@@ -448,7 +640,6 @@ public class SimuladorGUI extends JFrame {
         }
 
         int direccionActual = cpu.getDireccionIRActual();
-
         if (direccionActual < 0) {
             direccionActual = memoria.getInicioUsuario();
         }
@@ -457,8 +648,13 @@ public class SimuladorGUI extends JFrame {
 
         tablaMemoriaFisica.repaint();
         tablaProcesos.repaint();
+
+        actualizarPanelFragmentacion();
     }
 
+    // =========================================================================
+    // HELPERS DE UI
+    // =========================================================================
     private JTable crearTablaOscura(DefaultTableModel modelo) {
         JTable tabla = new JTable(modelo);
         tabla.setBackground(new Color(30, 30, 30));
@@ -481,8 +677,7 @@ public class SimuladorGUI extends JFrame {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
         TitledBorder tb = BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(Color.GRAY),
-                titulo);
+                BorderFactory.createLineBorder(Color.GRAY), titulo);
         tb.setTitleColor(Color.LIGHT_GRAY);
         p.setBorder(tb);
         p.add(comp);
@@ -500,29 +695,22 @@ public class SimuladorGUI extends JFrame {
         if (timerSimulacion != null && timerSimulacion.isRunning()) {
             timerSimulacion.stop();
         }
-
         dispose();
-
         SwingUtilities.invokeLater(() -> {
             SimuladorGUI nueva = new SimuladorGUI(
-                    tamanoRamConfig,
-                    porcentajeKernelConfig,
-                    tamanoDiscoConfig,
-                    porcentajeIndiceDiscoConfig);
+                    tamanoRamConfig, porcentajeKernelConfig,
+                    tamanoDiscoConfig, porcentajeIndiceDiscoConfig);
             nueva.setVisible(true);
         });
     }
 
     private Color obtenerColorProceso(int pid) {
-        if (pid <= 0) {
+        if (pid <= 0)
             return new Color(220, 220, 220);
-        }
-
         if (!coloresProcesos.containsKey(pid)) {
             int index = (pid - 1) % paletaProcesos.length;
             coloresProcesos.put(pid, paletaProcesos[index]);
         }
-
         return coloresProcesos.get(pid);
     }
 
@@ -535,9 +723,8 @@ public class SimuladorGUI extends JFrame {
 
     private BCP buscarProcesoPorDireccion(int direccion) {
         for (BCP p : kernel.getListaProcesos()) {
-            if (perteneceAlProceso(p, direccion)) {
+            if (perteneceAlProceso(p, direccion))
                 return p;
-            }
         }
         return null;
     }
@@ -545,7 +732,6 @@ public class SimuladorGUI extends JFrame {
     private boolean perteneceAlProceso(BCP proceso, int direccion) {
         Integer inicio = obtenerValorEnteroCampo(proceso,
                 "baseMemoria", "inicioMemoria", "direccionBase", "base", "inicio");
-
         Integer tamano = obtenerValorEnteroCampo(proceso,
                 "tamanoProceso", "limiteMemoria", "longitudProceso", "size", "tamano", "alcance");
 
@@ -555,7 +741,6 @@ public class SimuladorGUI extends JFrame {
 
         Integer fin = obtenerValorEnteroCampo(proceso,
                 "finMemoria", "direccionFin", "limiteSuperior", "topeMemoria");
-
         if (inicio != null && fin != null) {
             return direccion >= inicio && direccion <= fin;
         }
@@ -565,27 +750,24 @@ public class SimuladorGUI extends JFrame {
 
     private Integer obtenerValorEnteroCampo(Object obj, String... nombresPosibles) {
         Class<?> clase = obj.getClass();
-
         for (String nombre : nombresPosibles) {
             try {
                 Field campo = clase.getDeclaredField(nombre);
                 campo.setAccessible(true);
                 Object valor = campo.get(obj);
-
-                if (valor instanceof Integer) {
+                if (valor instanceof Integer)
                     return (Integer) valor;
-                }
-
-                if (valor != null) {
+                if (valor != null)
                     return Integer.parseInt(valor.toString());
-                }
             } catch (Exception e) {
-            }
+                /* ignorar */ }
         }
-
         return null;
     }
 
+    // =========================================================================
+    // RENDERERS
+    // =========================================================================
     class ColorRowRenderer extends DefaultTableCellRenderer {
         private int pcActual;
         private int limiteKernel;
@@ -604,7 +786,8 @@ public class SimuladorGUI extends JFrame {
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean isSelected, boolean hasFocus, int row, int column) {
 
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            Component c = super.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, column);
 
             if (row < limiteKernel) {
                 c.setBackground(new Color(255, 255, 200));
@@ -612,10 +795,8 @@ public class SimuladorGUI extends JFrame {
                 c.setFont(c.getFont().deriveFont(Font.PLAIN));
             } else {
                 BCP procesoDeFila = buscarProcesoPorDireccion(row);
-
                 if (procesoDeFila != null) {
                     Color colorPid = obtenerColorProceso(procesoDeFila.id);
-
                     if (bcpActual != null && procesoDeFila.id == bcpActual.id && row == pcActual) {
                         c.setBackground(colorPid);
                         c.setForeground(Color.BLACK);
@@ -653,7 +834,6 @@ public class SimuladorGUI extends JFrame {
             try {
                 int pid = Integer.parseInt(table.getValueAt(row, 0).toString());
                 String estado = table.getValueAt(row, 2).toString();
-
                 Color colorPid = obtenerColorProceso(pid);
 
                 if ("EJECUCION".equalsIgnoreCase(estado) || "EJECUCION (CPU)".equalsIgnoreCase(estado)) {

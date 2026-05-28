@@ -56,21 +56,21 @@ public class Cpu {
         interrupciones.put("10H", this::manejarInt10H);
 
         pesosInstrucciones = new HashMap<>();
-        pesosInstrucciones.put("00001", 2);
-        pesosInstrucciones.put("00010", 2);
+        pesosInstrucciones.put("00001", 1);
+        pesosInstrucciones.put("00010", 1);
         pesosInstrucciones.put("00011", 1);
-        pesosInstrucciones.put("00100", 3);
-        pesosInstrucciones.put("00101", 3);
+        pesosInstrucciones.put("00100", 1);
+        pesosInstrucciones.put("00101", 1);
         pesosInstrucciones.put("00110", 1);
         pesosInstrucciones.put("00111", 1);
-        pesosInstrucciones.put("01000", 2);
-        pesosInstrucciones.put("01001", 2);
-        pesosInstrucciones.put("01010", 2);
-        pesosInstrucciones.put("01011", 2);
+        pesosInstrucciones.put("01000", 1);
+        pesosInstrucciones.put("01001", 1);
+        pesosInstrucciones.put("01010", 1);
+        pesosInstrucciones.put("01011", 1);
         pesosInstrucciones.put("01100", 1);
         pesosInstrucciones.put("01101", 1);
-        pesosInstrucciones.put("01110", 3);
-        pesosInstrucciones.put("01111", 2);
+        pesosInstrucciones.put("01110", 1);
+        pesosInstrucciones.put("01111", 1);
         pesosInstrucciones.put("10000", 1);
     }
 
@@ -88,13 +88,20 @@ public class Cpu {
 
     private int obtenerRegistros(String nombreRegistro, BCP bcp) {
         switch (nombreRegistro.trim().toUpperCase()) {
-            case "AX": return bcp.AX;
-            case "BX": return bcp.BX;
-            case "CX": return bcp.CX;
-            case "DX": return bcp.DX;
-            case "AC": return bcp.AC;
-            case "AH": return bcp.AH;
-            case "AL": return bcp.AL;
+            case "AX":
+                return bcp.AX;
+            case "BX":
+                return bcp.BX;
+            case "CX":
+                return bcp.CX;
+            case "DX":
+                return bcp.DX;
+            case "AC":
+                return bcp.AC;
+            case "AH":
+                return bcp.AH;
+            case "AL":
+                return bcp.AL;
             default:
                 throw new IllegalArgumentException("Registro desconocido: " + nombreRegistro);
         }
@@ -102,23 +109,43 @@ public class Cpu {
 
     private void escribirRegistro(String nombreRegistro, int valor, BCP bcp) {
         switch (nombreRegistro.trim().toUpperCase()) {
-            case "AX": bcp.AX = valor; break;
-            case "BX": bcp.BX = valor; break;
-            case "CX": bcp.CX = valor; break;
-            case "DX": bcp.DX = valor; break;
-            case "AH": bcp.AH = valor; break;
-            case "AL": bcp.AL = valor; break;
-            case "AC": bcp.AC = valor; break;
+            case "AX":
+                bcp.AX = valor;
+                break;
+            case "BX":
+                bcp.BX = valor;
+                break;
+            case "CX":
+                bcp.CX = valor;
+                break;
+            case "DX":
+                bcp.DX = valor;
+                break;
+            case "AH":
+                bcp.AH = valor;
+                break;
+            case "AL":
+                bcp.AL = valor;
+                break;
+            case "AC":
+                bcp.AC = valor;
+                break;
             default:
                 throw new IllegalArgumentException("Registro desconocido: " + nombreRegistro);
         }
     }
 
     private boolean esRegistroValido(String nombreRegistro) {
-        if (nombreRegistro == null) return false;
+        if (nombreRegistro == null)
+            return false;
         switch (nombreRegistro.trim().toUpperCase()) {
-            case "AX": case "BX": case "CX": case "DX":
-            case "AC": case "AH": case "AL":
+            case "AX":
+            case "BX":
+            case "CX":
+            case "DX":
+            case "AC":
+            case "AH":
+            case "AL":
                 return true;
             default:
                 return false;
@@ -126,16 +153,20 @@ public class Cpu {
     }
 
     private int obtenerPesoInstruccion(String[] partes) {
-        if (partes == null || partes.length == 0) return 1;
+        if (partes == null || partes.length == 0)
+            return 1;
 
         String opcode = partes[0];
 
         // INT solo tiene 20H y 10H ahora
         if ("01111".equals(opcode) && partes.length > 1) {
             switch (partes[1].trim().toUpperCase()) {
-                case "20H": return 2;
-                case "10H": return 2;
-                default:    return 2;
+                case "20H":
+                    return 2;
+                case "10H":
+                    return 2;
+                default:
+                    return 2;
             }
         }
 
@@ -177,29 +208,29 @@ public class Cpu {
     }
 
     public class Move implements Instruccion {
-    @Override
-    public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-        if (operandos.length < 3)
-            throw new IllegalArgumentException("Formato MOVE incorrecto en PC: " + bcp.PC);
+        @Override
+        public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
+            if (operandos.length < 3)
+                throw new IllegalArgumentException("Formato MOVE incorrecto en PC: " + bcp.PC);
 
-        String destino = operandos[1];
-        if (!esRegistroValido(destino))
-            throw new IllegalArgumentException("Registro inválido en MOV: " + destino);
+            String destino = operandos[1];
+            if (!esRegistroValido(destino))
+                throw new IllegalArgumentException("Registro inválido en MOV: " + destino);
 
-        int valor;
+            int valor;
 
-        // Si el segundo operando es un registro, leemos su valor
-        // Si no, lo tratamos como número literal
-        if (esRegistroValido(operandos[2])) {
-            valor = obtenerRegistros(operandos[2], bcp);
-        } else {
-            valor = parseValor(operandos[2]);
+            // Si el segundo operando es un registro, leemos su valor
+            // Si no, lo tratamos como número literal
+            if (esRegistroValido(operandos[2])) {
+                valor = obtenerRegistros(operandos[2], bcp);
+            } else {
+                valor = parseValor(operandos[2]);
+            }
+
+            escribirRegistro(destino, valor, bcp);
+            System.out.println("MOV ejecutado -> " + destino + " = " + valor);
         }
-
-        escribirRegistro(destino, valor, bcp);
-        System.out.println("MOV ejecutado -> " + destino + " = " + valor);
     }
-}
 
     public class Sub implements Instruccion {
         @Override
@@ -283,8 +314,10 @@ public class Cpu {
             if (operandos.length < 3)
                 throw new IllegalArgumentException("CMP requiere dos registros.");
             String reg1 = operandos[1], reg2 = operandos[2];
-            if (!esRegistroValido(reg1)) throw new IllegalArgumentException("Registro inválido en CMP: " + reg1);
-            if (!esRegistroValido(reg2)) throw new IllegalArgumentException("Registro inválido en CMP: " + reg2);
+            if (!esRegistroValido(reg1))
+                throw new IllegalArgumentException("Registro inválido en CMP: " + reg1);
+            if (!esRegistroValido(reg2))
+                throw new IllegalArgumentException("Registro inválido en CMP: " + reg2);
             int v1 = obtenerRegistros(reg1, bcp), v2 = obtenerRegistros(reg2, bcp);
             bcp.flagIgual = (v1 == v2);
             System.out.println("CMP: " + reg1 + "=" + v1 + " vs " + reg2 + "=" + v2 + " -> " + bcp.flagIgual);
@@ -314,7 +347,10 @@ public class Cpu {
                 throw new IllegalArgumentException("JE requiere un desplazamiento.");
             try {
                 int d = Integer.parseInt(operandos[1]);
-                if (bcp.flagIgual) { bcp.PC = bcp.PC + d; saltoRealizado = true; }
+                if (bcp.flagIgual) {
+                    bcp.PC = bcp.PC + d;
+                    saltoRealizado = true;
+                }
                 System.out.println("JE: flagIgual=" + bcp.flagIgual + " -> PC=" + bcp.PC);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Desplazamiento inválido en JE: " + operandos[1]);
@@ -329,7 +365,10 @@ public class Cpu {
                 throw new IllegalArgumentException("JNE requiere un desplazamiento.");
             try {
                 int d = Integer.parseInt(operandos[1]);
-                if (!bcp.flagIgual) { bcp.PC = bcp.PC + d; saltoRealizado = true; }
+                if (!bcp.flagIgual) {
+                    bcp.PC = bcp.PC + d;
+                    saltoRealizado = true;
+                }
                 System.out.println("JNE: flagIgual=" + bcp.flagIgual + " -> PC=" + bcp.PC);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Desplazamiento inválido en JNE: " + operandos[1]);
@@ -423,7 +462,8 @@ public class Cpu {
 
         if (procesoActual.estado.equals("TERMINADO") || procesoActual.estado.equals("ERROR")) {
             procesoActual = kernel.solicitarSiguienteProceso();
-            if (procesoActual == null) return false;
+            if (procesoActual == null)
+                return false;
             dispatcher.despachar(procesoActual);
         }
 
@@ -434,7 +474,8 @@ public class Cpu {
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
             procesoActual.IR = "00000";
-            if (!saltoRealizado) procesoActual.PC++;
+            if (!saltoRealizado)
+                procesoActual.PC++;
             saltoRealizado = false;
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
@@ -480,7 +521,8 @@ public class Cpu {
         String opcode = partes[0];
 
         Instruccion instr = operaciones.get(opcode);
-        if (instr == null) return marcarErrorProceso("Opcode inválido -> " + opcode);
+        if (instr == null)
+            return marcarErrorProceso("Opcode inválido -> " + opcode);
 
         try {
             instr.ejecutar(partes, procesoActual, memoria);
@@ -506,7 +548,8 @@ public class Cpu {
         kernel.finalizarProceso(procesoActual);
         procesoActual = null;
         Errors.logError(mensaje);
-        if (uiParent != null) Errors.mostrarErrorVisual(uiParent, "Error de ejecución", mensaje);
+        if (uiParent != null)
+            Errors.mostrarErrorVisual(uiParent, "Error de ejecución", mensaje);
         return false;
     }
 
