@@ -3,95 +3,53 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package tarea1.joseandres.memoria;
+
 import tarea1.joseandres.proceso.BCP;
+
 /**
  *
- * Representa una partición fija en RAM.
- *
+ * @author joses
  */
 public class Particion {
 
-    private int numero;
-
-    // Dirección inicial en RAM
-    private int inicio;
-
-    // Tamaño total de la partición
-    private int tamaño;
-
-    // Estado de la partición
+    private final int numero;
+    private final int inicio;      // Dirección física inicial en RAM
+    private final int tamano;      // Tamaño total de la partición en celdas
     private boolean libre;
-
-    // Proceso asignado
     private BCP proceso;
-
-    // Fragmentación interna
     private int fragmentacionInterna;
 
-    /**
-     * Constructor
-     */
-    public Particion(int numero, int inicio, int tamaño) {
-
+    public Particion(int numero, int inicio, int tamano) {
         this.numero = numero;
         this.inicio = inicio;
-        this.tamaño = tamaño;
-
+        this.tamano = tamano;
         this.libre = true;
-
         this.proceso = null;
-
         this.fragmentacionInterna = 0;
     }
 
     /**
-     * Ocupa la partición con un proceso
+     * Ocupa la partición con un proceso y calcula la fragmentación interna.
      */
     public void ocupar(BCP proceso) {
-
         this.libre = false;
-
         this.proceso = proceso;
-
-        // Fragmentación interna
-        this.fragmentacionInterna =
-                this.tamaño - proceso.getAlcance();
+        // Fragmentación = Tamaño de la ranura - Lo que realmente requiere el programa (.asm)
+        this.fragmentacionInterna = this.tamano - proceso.getAlcance();
     }
 
     /**
-     * Libera la partición
+     * Libera la partición limpiando sus referencias de control.
      */
     public void liberar() {
-
         this.libre = true;
-
         this.proceso = null;
-
         this.fragmentacionInterna = 0;
     }
 
-    /**
-     * Verifica si una dirección pertenece a esta partición
-     */
-    public boolean contieneDireccion(int direccion) {
-
-        return direccion >= inicio
-                && direccion < (inicio + tamaño);
-    }
-
-    /**
-     * Verifica si el proceso cabe en la partición
-     */
-    public boolean puedeAsignar(BCP proceso) {
-
-        return libre
-                && proceso.getAlcance() <= tamaño;
-    }
-
     // =========================================================
-    // GETTERS
+    // GETTERS Y SETTERS
     // =========================================================
-
     public int getNumero() {
         return numero;
     }
@@ -101,11 +59,11 @@ public class Particion {
     }
 
     public int getFin() {
-        return inicio + tamaño - 1;
+        return inicio + tamano - 1;
     }
 
-    public int getTamaño() {
-        return tamaño;
+    public int getTamano() {
+        return tamano;
     }
 
     public boolean isLibre() {
@@ -120,35 +78,16 @@ public class Particion {
         return fragmentacionInterna;
     }
 
-    // =========================================================
-    // SETTERS
-    // =========================================================
-
-    public void setLibre(boolean libre) {
-        this.libre = libre;
-    }
-
-    public void setProceso(BCP proceso) {
-        this.proceso = proceso;
-    }
-
-    public void setFragmentacionInterna(int fragmentacionInterna) {
-        this.fragmentacionInterna = fragmentacionInterna;
-    }
-
     @Override
     public String toString() {
-
         return "Particion{"
                 + "numero=" + numero
                 + ", inicio=" + inicio
                 + ", fin=" + getFin()
-                + ", tamaño=" + tamaño
+                + ", tamano=" + tamano
                 + ", libre=" + libre
-                + ", proceso="
-                + (proceso != null ? proceso.id : "NONE")
-                + ", fragmentacionInterna="
-                + fragmentacionInterna
+                + ", PID=" + (proceso != null ? proceso.id : "Ninguno")
+                + ", fragInterna=" + fragmentacionInterna
                 + '}';
     }
 }

@@ -10,7 +10,7 @@ import java.util.List;
 /**
  *
  * @author joses
- * Los proce so s que esten listos para trabajar los agregamos a la readyQueque
+ * Los procesos que esten listos para trabajar los agregamos a la readyQueque
  */
 public class Scheduler {
     private List<BCP> readyQueue;

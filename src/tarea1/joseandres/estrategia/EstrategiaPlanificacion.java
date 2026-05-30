@@ -11,7 +11,7 @@ import tarea1.joseandres.proceso.BCP;
  *
  * @author joses
  * Usamos el patron strategy para implementar los algoritmos a futuro.
- * Todos son capaces de recibir una lista d eproces os y devolver uno.
+ * Todos son capaces de recibir una lista d eprocesos y devolver uno.
  */
 public interface EstrategiaPlanificacion {
     BCP seleccionarSiguiente(List<BCP> listos);

@@ -10,12 +10,12 @@ import tarea1.joseandres.memoria.Memoria;
 /**
  *
  * @author joses
- *         Cambiamos a estado ejecucion, calculamos
+ * Cambiamos a estado ejecucion, calculamos
  */
 public class Dispatcher {
 
     private Memoria ram;
-    private final int TAMANO_BLOQUE_BCP = 14; // Es pacio fijo por proceso
+    private final int TAMANO_BLOQUE_BCP = 14; // Espacio fijo por proceso
 
     public Dispatcher(Memoria ram) {
         this.ram = ram;
@@ -26,7 +26,7 @@ public class Dispatcher {
             return;
         }
 
-        // Cambiamos el estado
+        //Cambiamos el estado 
         proceso.estado = "EJECUCION (CPU)";
 
         // Registramos tiempo de inicio si es la primera vez que entra
@@ -34,7 +34,7 @@ public class Dispatcher {
             proceso.tiempoInicio = System.currentTimeMillis();
         }
 
-        // Sincronizamos con la RAM (Zona Kernel)
+        //Sincronizamos con la RAM (Zona Kernel) 
         actualizarBcpEnKernel(proceso);
 
         System.out.println("DISPATCHER: Proceso " + proceso.nombreProceso + " puesto en ejecución.");
@@ -62,9 +62,9 @@ public class Dispatcher {
         ram.escribirEnKernel(offset + 7, "BX:" + p.BX);
         ram.escribirEnKernel(offset + 8, "CX:" + p.CX);
         ram.escribirEnKernel(offset + 9, "DX:" + p.DX);
-        // ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
-        // ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
-        // ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
-        // ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
+        ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
+        ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
+        ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
+        ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
     }
 }

@@ -18,7 +18,7 @@ public class BCP {
    
     
     // Registros de Control 
-    public int PC;      // Prog ram Counter (Puntero a la instruccion actual)
+    public int PC;      // Program Counter (Puntero a la instruccion actual)
     public String IR;   // Instruction Register (Guarda el texto de la instrucciion) eje: 011 BX 10
 
     // Registros de Datos (Los que guardan valores

@@ -1,3 +1,7 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package tarea1.joseandres.cpu;
 
 import java.awt.Component;
@@ -7,32 +11,47 @@ import tarea1.joseandres.kernel.Kernel;
 import tarea1.joseandres.memoria.Memoria;
 import tarea1.joseandres.proceso.BCP;
 import tarea1.joseandres.dispacher.Dispatcher;
+import tarea1.joseandres.disco.Disco;
 import tarea1.joseandres.uitls.Errors;
+import javax.swing.JOptionPane;
 import tarea1.joseandres.interfaz.SimuladorGUI;
 
+/**
+ *
+ * @author joses
+ */
 public class Cpu {
 
     private Memoria memoria;
-    private Dispatcher dispatcher;
+    private Dispatcher dispatcher; // Para actualizar la RAM del Kernel
 
     private Map<String, Instruccion> operaciones;
-    private Map<String, Integer> pesosInstrucciones;
-    private Map<String, IntHandler> interrupciones;
+    private Map<String, Integer> pesosInstrucciones; //Inst, pesos
+    private Map<String, IntHandler> interrupciones; //INT-> interrupcuines
+    private Map<Integer, Int21Handler> int21Handlers;//Guardaremos los atributos de 21H
+    private Map<String, String> archivos = new HashMap<>(); //Guardaremos los archivos  filesystem
 
     private BCP procesoActual;
+    private Disco disco;
     private Kernel kernel;
-    private Component uiParent;
-    private boolean saltoRealizado = false;
+    private Component uiParent;//Conectamos a la CPU para mandar errores visuales de registros.
+    private boolean saltoRealizado = false; //Permite saber si se realizo un JMP
+    private boolean esperandoEntradaInt09 = false;//Para entrada de teclado.
 
-    private int direccionIRActual = -1;
+    private int direccionIRActual = -1; //Guardamos indice de IR
 
-    public Cpu(Memoria memoria, Dispatcher dispatcher, Kernel kernel, Component uiParent) {
+    public Cpu(Memoria memoria, Dispatcher dispatcher, Disco disco, Kernel kernel, Component uiParent) {
         this.memoria = memoria;
         this.dispatcher = dispatcher;
+        this.disco = disco;
         this.kernel = kernel;
         this.uiParent = uiParent;
 
+        //=============================================================
+        //==============Registramos las operaciones=====================
+        //============================================================
         operaciones = new HashMap<>();
+        // Registramos con los nuevos opcodes de 5 bits
         operaciones.put("00001", new Load());
         operaciones.put("00010", new Store());
         operaciones.put("00011", new Move());
@@ -50,34 +69,43 @@ public class Cpu {
         operaciones.put("01111", new IntInstruction());
         operaciones.put("10000", new Swap());
 
-        // Solo 20H (finalizar) y 10H (imprimir)
+        //=============================================================
+        //==============Manejo de instrucciones INT=========================
+        //=============================================================
         interrupciones = new HashMap<>();
-        interrupciones.put("20H", this::manejarInt20H);
         interrupciones.put("10H", this::manejarInt10H);
 
+        //=============================================================
+        //==============Registramos sus pesos=========================
+        //=============================================================
         pesosInstrucciones = new HashMap<>();
-        pesosInstrucciones.put("00001", 1);
-        pesosInstrucciones.put("00010", 1);
-        pesosInstrucciones.put("00011", 1);
-        pesosInstrucciones.put("00100", 1);
-        pesosInstrucciones.put("00101", 1);
-        pesosInstrucciones.put("00110", 1);
-        pesosInstrucciones.put("00111", 1);
-        pesosInstrucciones.put("01000", 1);
-        pesosInstrucciones.put("01001", 1);
-        pesosInstrucciones.put("01010", 1);
-        pesosInstrucciones.put("01011", 1);
-        pesosInstrucciones.put("01100", 1);
-        pesosInstrucciones.put("01101", 1);
-        pesosInstrucciones.put("01110", 1);
-        pesosInstrucciones.put("01111", 1);
-        pesosInstrucciones.put("10000", 1);
+        pesosInstrucciones.put("00001", 1); // LOAD
+        pesosInstrucciones.put("00010", 1); // STORE
+        pesosInstrucciones.put("00011", 1); // MOV
+        pesosInstrucciones.put("00100", 1); // SUB
+        pesosInstrucciones.put("00101", 1); // ADD
+        pesosInstrucciones.put("00110", 1); // INC
+        pesosInstrucciones.put("00111", 1); // DEC
+        pesosInstrucciones.put("01000", 1); // JMP
+        pesosInstrucciones.put("01001", 1); // CMP
+        pesosInstrucciones.put("01010", 1); // JE
+        pesosInstrucciones.put("01011", 1); // JNE
+        pesosInstrucciones.put("01100", 1); // PUSH
+        pesosInstrucciones.put("01101", 1); // POP
+        pesosInstrucciones.put("01110", 1); // PARAM
+        pesosInstrucciones.put("01111", 1); // INT 
+        pesosInstrucciones.put("10000", 1); // SWAP
     }
 
+    //getter
     public BCP getProcesoActual() {
         return this.procesoActual;
     }
 
+    /**
+     * Permite que el simulador le asigne un nuevo trabajo a la CPU. El
+     * Dispatcher se encarga de cambiar el estado y registrarlo en el Kernel.
+     */
     public void setProcesoActual(BCP bcp) {
         this.procesoActual = bcp;
     }
@@ -86,6 +114,7 @@ public class Cpu {
         return direccionIRActual;
     }
 
+    //Metodo  para leer valor de un registro por nombre 
     private int obtenerRegistros(String nombreRegistro, BCP bcp) {
         switch (nombreRegistro.trim().toUpperCase()) {
             case "AX":
@@ -107,6 +136,7 @@ public class Cpu {
         }
     }
 
+    //mMetodo para escribir un valor a un registro por nombre
     private void escribirRegistro(String nombreRegistro, int valor, BCP bcp) {
         switch (nombreRegistro.trim().toUpperCase()) {
             case "AX":
@@ -135,9 +165,12 @@ public class Cpu {
         }
     }
 
+    //Clase para errores
     private boolean esRegistroValido(String nombreRegistro) {
-        if (nombreRegistro == null)
+        if (nombreRegistro == null) {
             return false;
+        }
+
         switch (nombreRegistro.trim().toUpperCase()) {
             case "AX":
             case "BX":
@@ -152,70 +185,105 @@ public class Cpu {
         }
     }
 
+    //Switch necesario para validar el peso de 01111->INT
     private int obtenerPesoInstruccion(String[] partes) {
-        if (partes == null || partes.length == 0)
+        if (partes == null || partes.length == 0) {
             return 1;
+        }
 
         String opcode = partes[0];
 
-        // INT solo tiene 20H y 10H ahora
-        if ("01111".equals(opcode) && partes.length > 1) {
-            switch (partes[1].trim().toUpperCase()) {
-                case "20H":
-                    return 2;
-                case "10H":
-                    return 2;
-                default:
-                    return 2;
+        //  INT cambia segun el operando
+        if ("01111".equals(opcode)) {
+            if (partes.length > 1) {
+                String tipoInterrupcion = partes[1].trim().toUpperCase();
+
+                switch (tipoInterrupcion) {
+                    case "10H":
+                        return 1; // imprimimos pantalla
+                    default:
+                        return 1;
+                }
             }
         }
 
-        return pesosInstrucciones.getOrDefault(opcode, 1);
+        return pesosInstrucciones.getOrDefault(opcode, 1); //Devolvemos el INT
     }
 
-    public interface Instruccion {
+    ////////////////////////////////////////////////////////////////////////////////
+    //PATRON DE DISENO STRATEGY. Evitamos hacer puros ifs y whiles
+     ////////////////////////////////////////////////////////////////////////////////
+   
+     
+     public interface Instruccion {
+
         void ejecutar(String[] operandos, BCP bcp, Memoria memoria);
     }
 
+    //====================Constructor para los eventos de INT======================
     public interface IntHandler {
+
+        void ejecutar(BCP bcp, Memoria memoria);
+    }
+
+    //===============Constructor para los eventos de 21Handler======================
+    public interface Int21Handler {
+
         void ejecutar(BCP bcp, Memoria memoria);
     }
 
     public class Load implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("LOAD requiere un registro.");
+            }
+            // operandos[1] es el registro de donde viene el dato (ej: "AX")
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro inválido en LOAD: " + registro);
+            }
+
+            // El AC recibe el valor que hay en ese registro
             bcp.AC = obtenerRegistros(registro, bcp);
             System.out.println("LOAD ejecutado: " + registro + " (" + bcp.AC + ") -> AC");
         }
     }
 
     public class Store implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("STORE requiere un registro.");
+            }
+            // operandos[1] es el registro donde vamos a guardar (ej: "DX")
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro inválido en STORE: " + registro);
+            }
+
+            // Escribimos en el registro lo que hay actualmente en el AC
             escribirRegistro(registro, bcp.AC, bcp);
+
             System.out.println("STORE ejecutado: AC (" + bcp.AC + ") -> " + registro);
         }
     }
 
     public class Move implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 3)
+            if (operandos.length < 3) {
                 throw new IllegalArgumentException("Formato MOVE incorrecto en PC: " + bcp.PC);
+            }
 
             String destino = operandos[1];
-            if (!esRegistroValido(destino))
+            if (!esRegistroValido(destino)) {
                 throw new IllegalArgumentException("Registro inválido en MOV: " + destino);
+            }
 
             int valor;
 
@@ -233,307 +301,467 @@ public class Cpu {
     }
 
     public class Sub implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("SUB requiere un registro.");
+            }
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro inválido en SUB: " + registro);
-            bcp.AC = bcp.AC - obtenerRegistros(registro, bcp);
+            }
+            int valorReg = obtenerRegistros(registro, bcp);
+            bcp.AC = bcp.AC - valorReg;
             System.out.println("SUB ejecutado: AC - " + registro + " = " + bcp.AC);
         }
     }
 
     public class Add implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("ADD requiere un registro.");
+            }
+
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro inválido en ADD: " + registro);
-            bcp.AC = bcp.AC + obtenerRegistros(registro, bcp);
+            }
+            int valorReg = obtenerRegistros(registro, bcp);
+            bcp.AC = bcp.AC + valorReg;
             System.out.println("ADD ejecutado: AC + " + registro + " = " + bcp.AC);
         }
     }
 
+    ///////////////////////////Registros E/S/////////////////////////
     public class Push implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("PUSH requiere un registro.");
+            }
+
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro invalido en PUSH: " + registro);
-            if (!bcp.push(obtenerRegistros(registro, bcp)))
+            }
+
+            int valor = obtenerRegistros(registro, bcp);
+
+            boolean ok = bcp.push(valor);
+            if (!ok) {
                 throw new IllegalArgumentException("Stack Overflow en PUSH.");
-            System.out.println("PUSH ejecutado: " + registro + " -> pila");
+            }
+
+            System.out.println("PUSH ejecutado: " + registro + " (" + valor + ") -> pila");
         }
     }
 
+    //Saca de la cola y se gaurda en BX
     public class Pop implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("POP requiere un registro.");
+            }
+
             String registro = operandos[1];
-            if (!esRegistroValido(registro))
+
+            if (!esRegistroValido(registro)) {
                 throw new IllegalArgumentException("Registro inválido en POP: " + registro);
+            }
+
             int valor = bcp.pop();
-            if (valor == -999)
+
+            if (valor == -999) {
                 throw new IllegalArgumentException("Stack Underflow en POP.");
+            }
+
             escribirRegistro(registro, valor, bcp);
+
             System.out.println("POP ejecutado: pila -> " + registro + " (" + valor + ")");
         }
     }
 
+    //Trae valores que se guardan en la pila
     public class Param implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("PARAM requiere al menos un valor.");
+            }
+
             int cantidad = operandos.length - 1;
-            if (cantidad > 3)
+
+            if (cantidad > 3) {
                 throw new IllegalArgumentException("PARAM acepta máximo 3 parámetros.");
+            }
+
             for (int i = 1; i < operandos.length; i++) {
+                int valor;
                 try {
-                    if (!bcp.push(Integer.parseInt(operandos[i])))
-                        throw new IllegalArgumentException("Stack Overflow en PARAM.");
+                    valor = Integer.parseInt(operandos[i]);
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("Parámetro inválido en PARAM: " + operandos[i]);
                 }
+
+                boolean ok = bcp.push(valor);
+                if (!ok) {
+                    throw new IllegalArgumentException("Stack Overflow en PARAM.");
+                }
             }
-            System.out.println("PARAM ejecutado: " + cantidad + " valores en pila.");
+
+            System.out.println("PARAM ejecutado: se cargaron " + cantidad + " valores en pila.");
         }
     }
 
     public class Compare implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 3)
+            if (operandos.length < 3) {
                 throw new IllegalArgumentException("CMP requiere dos registros.");
-            String reg1 = operandos[1], reg2 = operandos[2];
-            if (!esRegistroValido(reg1))
+            }
+
+            String reg1 = operandos[1];
+            String reg2 = operandos[2];
+
+            if (!esRegistroValido(reg1)) {
                 throw new IllegalArgumentException("Registro inválido en CMP: " + reg1);
-            if (!esRegistroValido(reg2))
+            }
+
+            if (!esRegistroValido(reg2)) {
                 throw new IllegalArgumentException("Registro inválido en CMP: " + reg2);
-            int v1 = obtenerRegistros(reg1, bcp), v2 = obtenerRegistros(reg2, bcp);
-            bcp.flagIgual = (v1 == v2);
-            System.out.println("CMP: " + reg1 + "=" + v1 + " vs " + reg2 + "=" + v2 + " -> " + bcp.flagIgual);
+            }
+
+            int valor1 = obtenerRegistros(reg1, bcp);
+            int valor2 = obtenerRegistros(reg2, bcp);
+
+            bcp.flagIgual = (valor1 == valor2);
+
+            System.out.println("CMP ejecutado: " + reg1 + " (" + valor1 + ") vs "
+                    + reg2 + " (" + valor2 + ") -> flagIgual=" + bcp.flagIgual);
         }
     }
 
+    //Salta por si solo
     public class Jump implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("JMP requiere un desplazamiento.");
+            }
+
+            int desplazamiento;
             try {
-                int d = Integer.parseInt(operandos[1]);
-                bcp.PC = bcp.PC + d;
-                saltoRealizado = true;
-                System.out.println("JMP ejecutado: desplazamiento " + d + " -> PC=" + bcp.PC);
+                desplazamiento = Integer.parseInt(operandos[1]);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Desplazamiento inválido en JMP: " + operandos[1]);
             }
+
+            bcp.PC = bcp.PC + desplazamiento;
+            saltoRealizado = true;
+
+            System.out.println("JMP ejecutado: salto de " + desplazamiento + " -> nuevo PC " + bcp.PC);
         }
     }
 
+    //Salta si CMP retorna true.
     public class JumpEqual implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("JE requiere un desplazamiento.");
+            }
+
+            int desplazamiento;
             try {
-                int d = Integer.parseInt(operandos[1]);
-                if (bcp.flagIgual) {
-                    bcp.PC = bcp.PC + d;
-                    saltoRealizado = true;
-                }
-                System.out.println("JE: flagIgual=" + bcp.flagIgual + " -> PC=" + bcp.PC);
+                desplazamiento = Integer.parseInt(operandos[1]);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Desplazamiento inválido en JE: " + operandos[1]);
+            }
+
+            if (bcp.flagIgual) {
+                bcp.PC = bcp.PC + desplazamiento;
+                saltoRealizado = true;
+                System.out.println("JE ejecutado: salto de " + desplazamiento + " -> nuevo PC " + bcp.PC);
+            } else {
+                System.out.println("JE no ejecutado: flagIgual=false");
             }
         }
     }
 
+    //Salta si CMP retorna false.
     public class JumpNotEqual implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("JNE requiere un desplazamiento.");
+            }
+
+            int desplazamiento;
             try {
-                int d = Integer.parseInt(operandos[1]);
-                if (!bcp.flagIgual) {
-                    bcp.PC = bcp.PC + d;
-                    saltoRealizado = true;
-                }
-                System.out.println("JNE: flagIgual=" + bcp.flagIgual + " -> PC=" + bcp.PC);
+                desplazamiento = Integer.parseInt(operandos[1]);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Desplazamiento inválido en JNE: " + operandos[1]);
+            }
+
+            if (!bcp.flagIgual) {
+                bcp.PC = bcp.PC + desplazamiento;
+                saltoRealizado = true;
+                System.out.println("JNE ejecutado: salto de " + desplazamiento + " -> nuevo PC " + bcp.PC);
+            } else {
+                System.out.println("JNE no ejecutado: flagIgual=true");
             }
         }
     }
 
     public class Inc implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("Formato INC incorrecto en PC: " + bcp.PC);
+            }
+
             String reg = operandos[1];
-            if (!esRegistroValido(reg))
+
+            if (!esRegistroValido(reg)) {
                 throw new IllegalArgumentException("Registro inválido en INC: " + reg);
-            int valor = obtenerRegistros(reg, bcp) + 1;
+            }
+
+            int valor = obtenerRegistros(reg, bcp);
+            valor++;
+
             escribirRegistro(reg, valor, bcp);
+
             System.out.println("INC ejecutado -> " + reg + " = " + valor);
         }
     }
 
     public class Dec implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("Formato DEC incorrecto en PC: " + bcp.PC);
+            }
+
             String reg = operandos[1];
-            if (!esRegistroValido(reg))
+
+            if (!esRegistroValido(reg)) {
                 throw new IllegalArgumentException("Registro inválido en DEC: " + reg);
-            int valor = obtenerRegistros(reg, bcp) - 1;
+            }
+
+            int valor = obtenerRegistros(reg, bcp);
+            valor--;
+
             escribirRegistro(reg, valor, bcp);
+
             System.out.println("DEC ejecutado -> " + reg + " = " + valor);
         }
     }
 
     public class Swap implements Instruccion {
+
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 3)
+
+            if (operandos.length < 3) {
                 throw new IllegalArgumentException("Formato SWAP incorrecto en PC: " + bcp.PC);
-            String reg1 = operandos[1], reg2 = operandos[2];
-            if (!esRegistroValido(reg1) || !esRegistroValido(reg2))
+            }
+
+            String reg1 = operandos[1];
+            String reg2 = operandos[2];
+
+            if (!esRegistroValido(reg1) || !esRegistroValido(reg2)) {
                 throw new IllegalArgumentException("Registro inválido en SWAP");
-            int v1 = obtenerRegistros(reg1, bcp), v2 = obtenerRegistros(reg2, bcp);
-            escribirRegistro(reg1, v2, bcp);
-            escribirRegistro(reg2, v1, bcp);
+            }
+
+            int val1 = obtenerRegistros(reg1, bcp);
+            int val2 = obtenerRegistros(reg2, bcp);
+
+            escribirRegistro(reg1, val2, bcp);
+            escribirRegistro(reg2, val1, bcp);
+
             System.out.println("SWAP ejecutado -> " + reg1 + " <-> " + reg2);
         }
     }
 
+    //==========================================================================================
+    //==================================INTERRUPCIONES==========================================
+    //==========================================================================================
+    //Int. Tenemos el switch para caso 20H
     public class IntInstruction implements Instruccion {
-        @Override
+
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
-            if (operandos.length < 2)
+
+            if (operandos.length < 2) {
                 throw new IllegalArgumentException("INT requiere un código de interrupción.");
+            }
+
             String tipo = operandos[1].trim().toUpperCase();
+
             IntHandler handler = interrupciones.get(tipo);
-            if (handler == null)
+
+            if (handler == null) {
                 throw new IllegalArgumentException("Interrupción INT no soportada: " + tipo);
+            }
+
             handler.ejecutar(bcp, memoria);
         }
     }
 
-    private void manejarInt20H(BCP bcp, Memoria memoria) {
-        bcp.estado = "TERMINADO";
-        bcp.tiempoFinal = System.currentTimeMillis();
-        bcp.IR = "00000";
-        kernel.finalizarProceso(procesoActual);
-        System.out.println("INT 20H ejecutado: proceso finalizado.");
-    }
-
     private void manejarInt10H(BCP bcp, Memoria memoria) {
         String mensaje = String.valueOf(bcp.DX);
+
         if (uiParent instanceof SimuladorGUI) {
-            ((SimuladorGUI) uiParent).imprimirEnTerminal(" 10H -> " + mensaje);
+            SimuladorGUI gui = (SimuladorGUI) uiParent;
+            gui.imprimirEnTerminal(" 10H -> " + mensaje);
         } else {
-            System.out.println("INT 10H: DX = " + mensaje);
+            System.out.println("INT 10H ejecutado: salida en pantalla -> DX = " + mensaje);
         }
     }
 
+    //CLASE CREADA EN SU TOTALIDAD CON CHATGPT
+    /**
+     * Este es el método que llamará tu botón "Next Step" en la Interfaz. Recibe
+     * el proceso que el Scheduler/Dispatcher decidió poner en CPU.
+     */
     public boolean ejecutarSiguientePaso() {
 
+        // 1. Si no hay proceso actual, intentamos pedir uno al kernel
         if (procesoActual == null) {
             procesoActual = kernel.solicitarSiguienteProceso();
+
             if (procesoActual == null) {
                 System.out.println("CPU: No hay procesos pendientes.");
                 return false;
             }
+
             dispatcher.despachar(procesoActual);
         }
 
+        // 2. Si el proceso actual ya terminó o falló, pedimos otro
         if (procesoActual.estado.equals("TERMINADO") || procesoActual.estado.equals("ERROR")) {
             procesoActual = kernel.solicitarSiguienteProceso();
-            if (procesoActual == null)
+            if (procesoActual == null) {
                 return false;
+            }
             dispatcher.despachar(procesoActual);
         }
 
+        // 3. VALIDAR FIN REAL DEL PROCESO POR RANGO
         int limiteProceso = procesoActual.getDireccionBase() + procesoActual.getAlcance();
 
         if (procesoActual.PC >= limiteProceso) {
             int pidTerminado = procesoActual.id;
+
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
             procesoActual.IR = "00000";
-            if (!saltoRealizado)
+            if (!saltoRealizado) {
                 procesoActual.PC++;
+            }
             saltoRealizado = false;
             dispatcher.actualizarBcpEnKernel(procesoActual);
+
             kernel.finalizarProceso(procesoActual);
 
             BCP siguiente = kernel.solicitarSiguienteProceso();
+
             if (siguiente != null) {
                 procesoActual = siguiente;
                 dispatcher.despachar(procesoActual);
-                System.out.println("CPU: Finalizado PID " + pidTerminado + ". Iniciando PID " + procesoActual.id);
+
+                System.out.println("CPU: Finalizado PID " + pidTerminado
+                        + ". Iniciando PID " + procesoActual.id);
                 return true;
             } else {
                 procesoActual = null;
-                System.out.println("CPU: Finalizado PID " + pidTerminado + ". Sistema en IDLE.");
+                System.out.println("CPU: Finalizado PID " + pidTerminado
+                        + ". No hay más procesos. Sistema en IDLE.");
                 return false;
             }
         }
-
+        // 3. FETCH
         direccionIRActual = procesoActual.PC;
         String instruccionCompleta = memoria.leerCelda(procesoActual.PC);
         procesoActual.IR = instruccionCompleta;
 
+        // 4. Si encontramos fin de programa
         if (instruccionCompleta == null || instruccionCompleta.equals("00000")) {
             int pidTerminado = procesoActual.id;
+
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
             dispatcher.actualizarBcpEnKernel(procesoActual);
-            kernel.finalizarProceso(procesoActual);
 
+            // Ahora le avisamos al kernel.
+            kernel.finalizarProceso(procesoActual);
             BCP siguiente = kernel.solicitarSiguienteProceso();
+
             if (siguiente != null) {
                 procesoActual = siguiente;
                 dispatcher.despachar(procesoActual);
-                System.out.println("CPU: Finalizado PID " + pidTerminado + ". Iniciando PID " + procesoActual.id);
+
+                System.out.println("CPU: Finalizado PID " + pidTerminado
+                        + ". Iniciando PID " + procesoActual.id);
                 return true;
             } else {
                 procesoActual = null;
-                System.out.println("CPU: Finalizado PID " + pidTerminado + ". Sistema en IDLE.");
+                System.out.println("CPU: Finalizado PID " + pidTerminado
+                        + ". No hay más procesos. Sistema en IDLE.");
                 return false;
             }
         }
 
+        // 5. DECODE
         String[] partes = instruccionCompleta.split("\\s+");
-        String opcode = partes[0];
+        String opcode = partes[0]; //Partes de registro
 
+        // 6. EXECUTE
         Instruccion instr = operaciones.get(opcode);
-        if (instr == null)
+
+        if (instr == null) {
             return marcarErrorProceso("Opcode inválido -> " + opcode);
+        }
 
         try {
             instr.ejecutar(partes, procesoActual, memoria);
-            int peso = obtenerPesoInstruccion(partes);
-            procesoActual.ciclosConsumidos += peso;
-            System.out.println("CPU: instrucción " + opcode + " peso=" + peso
-                    + " total=" + procesoActual.ciclosConsumidos);
-        } catch (IllegalArgumentException | ArithmeticException e) {
+
+            // Solo sumar peso si la instrucción no quedó esperando entrada
+            if (!esperandoEntradaInt09) {
+                int peso = obtenerPesoInstruccion(partes);
+                procesoActual.ciclosConsumidos += peso;
+
+                System.out.println("CPU: instrucción " + opcode + " con peso " + peso
+                        + ". Total acumulado del proceso: " + procesoActual.ciclosConsumidos);
+            }
+
+        } catch (IllegalArgumentException e) {
+            return marcarErrorProceso(e.getMessage());
+        } catch (ArithmeticException e) {
             return marcarErrorProceso(e.getMessage());
         } catch (Exception e) {
-            return marcarErrorProceso("Error inesperado: " + e.getMessage());
+            return marcarErrorProceso("Error inesperado en ejecución: " + e.getMessage());
+        }
+
+        if (esperandoEntradaInt09) {
+            // NO avanzamos el PC
+            dispatcher.actualizarBcpEnKernel(procesoActual);
+            return true;
         }
 
         procesoActual.PC++;
@@ -541,26 +769,51 @@ public class Cpu {
         return true;
     }
 
+    //==========================================================================================
+    //==================================UTILS==========================================
+    //==========================================================================================
     private boolean marcarErrorProceso(String mensaje) {
         procesoActual.estado = "ERROR";
         procesoActual.tiempoFinal = System.currentTimeMillis();
+
         dispatcher.actualizarBcpEnKernel(procesoActual);
+        // Liberamos memoria del proceso con error
         kernel.finalizarProceso(procesoActual);
+        // Lo sacamos de CPU para que entre el siguiente en el proximo paso
         procesoActual = null;
+
+        //Error de GUI
         Errors.logError(mensaje);
-        if (uiParent != null)
-            Errors.mostrarErrorVisual(uiParent, "Error de ejecución", mensaje);
+
+        if (uiParent != null) {
+            Errors.mostrarErrorVisual(
+                    uiParent,
+                    "Error de ejecución",
+                    mensaje
+            );
+        }
+
         return false;
+    }
+
+    public boolean estaEsperandoEntradaInt09() {
+        return esperandoEntradaInt09;
     }
 
     private int parseValor(String texto) {
         texto = texto.trim().toUpperCase();
+
         try {
-            return texto.endsWith("H")
-                    ? Integer.parseInt(texto.replace("H", ""), 16)
-                    : Integer.parseInt(texto);
+            if (texto.endsWith("H")) {
+                // Hexadecimal tipo 3CH
+                return Integer.parseInt(texto.replace("H", ""), 16);
+            } else {
+                // Decimal normal
+                return Integer.parseInt(texto);
+            }
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Valor inválido: " + texto);
         }
     }
+
 }
