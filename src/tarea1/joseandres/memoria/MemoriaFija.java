@@ -47,7 +47,7 @@ public class MemoriaFija {
         int sumaTamaños = 0;
 
         for (int tamano : tamanosParticiones) {
-            //  Verificar si esta partición desborda el límite físico de la RAM
+            //  Verifica si esta partición desborda el límite físico de la RAM
             if (inicioActual >= tamanoTotalRAM) {
                 // lamada a tu utilitario de errores para Logs de consola
                 Errors.logError("La particion #" + numParticion + " fue omitida. Motivo: El direccionamiento supero el limite fisico de la RAM (" + tamanoTotalRAM + ").");
@@ -172,7 +172,7 @@ public class MemoriaFija {
     public boolean asignarProceso(BCP proceso, String algoritmo) {
         Particion particionSeleccionada = null;
 
-        // --- ESCENARIO 1: FIJA IGUAL ---
+        //  FIJA IGUAL 
         // No requiere evaluar menor desperdicio, agarra la primera libre secuencial
         if (algoritmo != null && algoritmo.equalsIgnoreCase("FIJA_IGUAL")) {
             for (Particion p : particiones) {
@@ -181,7 +181,7 @@ public class MemoriaFija {
                     break; // Rompemos inmediatamente para optimizar
                 }
             }
-        } // --- ESCENARIO 2: BEST-FIT (Para FIJA_VARIABLE) ---
+        } // BEST-FIT (Para FIJA_VARIABLE)
         else {
             int menorDesperdicio = Integer.MAX_VALUE;
             for (Particion p : particiones) {
