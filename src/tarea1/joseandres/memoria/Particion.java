@@ -9,10 +9,11 @@ import tarea1.joseandres.proceso.BCP;
 /**
  *
  * @author joses
+ * Se encarga de saber cual proceso es cual junto a su direccion
  */
 public class Particion {
 
-    private final int numero;
+    private final int numero;      // ID del proceso
     private final int inicio;      // Dirección física inicial en RAM
     private final int tamano;      // Tamaño total de la partición en celdas
     private boolean libre;
@@ -20,8 +21,8 @@ public class Particion {
     private int fragmentacionInterna;
 
     public Particion(int numero, int inicio, int tamano) {
-        this.numero = numero;
-        this.inicio = inicio;
+        this.numero = numero; 
+        this.inicio = inicio; 
         this.tamano = tamano;
         this.libre = true;
         this.proceso = null;

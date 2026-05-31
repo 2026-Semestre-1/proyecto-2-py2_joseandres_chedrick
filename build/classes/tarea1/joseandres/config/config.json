@@ -1,12 +1,18 @@
 {
-  "hardware": {
-    "ram_size": 512,
-    "disk_size": 512,
-    "kernel_reserve_percentage": 20,
-    "disk_index_percentage": 10
-  },
-  "sistema": {
-    "max_procesos": 5,
-    "algoritmo_planificacion": "FCFS"
-  }
-} 
+    "hardware": {
+        "ram_size": 512,
+        "disk_size": 512,
+        "kernel_reserve_percentage": 20,
+        "disk_index_percentage": 10
+    },
+    "sistema": {
+        "max_procesos": 5,
+        "algoritmo_planificacion": "FCFS"
+    },
+    "memoria_fija": {
+        "tipo": "FIJA_VARIABLE",
+        "cantidad_particiones": 4,
+        "tamanos_particiones": [10, 300, 300, 500],
+        "algoritmo_asignacion": "BEST_FIT"
+    }
+}
