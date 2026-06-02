@@ -10,7 +10,7 @@
         "algoritmo_planificacion": "FCFS"
     },
     "memoria_fija": {
-        "tipo": "FIJA_VARIABLE",
+        "tipo": "DINAMICA",
         "cantidad_particiones": 4,
         "tamanos_particiones": [10, 300, 300, 500],
         "algoritmo_asignacion": "BEST_FIT"
