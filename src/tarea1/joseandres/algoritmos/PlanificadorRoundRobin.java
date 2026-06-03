@@ -4,11 +4,10 @@
  */
 package tarea1.joseandres.algoritmos;
 //<>
-import java.util.Comparator;
 import java.util.List;
 import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import tarea1.joseandres.proceso.BCP;
-
+//<>
 /**
  *
  * @author chedr
