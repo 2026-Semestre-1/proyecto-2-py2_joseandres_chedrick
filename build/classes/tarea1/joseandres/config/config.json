@@ -3,16 +3,19 @@
         "ram_size": 512,
         "disk_size": 512,
         "kernel_reserve_percentage": 20,
-        "disk_index_percentage": 10
+        "disk_index_percentage": 10,
+        "page_size": 10
     },
     "sistema": {
+        "cantidad_cpus": 3,
         "max_procesos": 5,
         "algoritmo_planificacion": "FCFS"
     },
     "memoria_fija": {
-        "tipo": "DINAMICA",
+        "_comentario1": "TIPOS: ( DINAMICA, FIJA, VARIABLE, PAGIN",
+        "tipo": "PAGIN",
         "cantidad_particiones": 4,
-        "tamanos_particiones": [10, 300, 300, 500],
+        "tamanos_particiones": [10, 200, 250, 50],
         "algoritmo_asignacion": "BEST_FIT"
     }
 }
