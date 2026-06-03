@@ -27,7 +27,7 @@ import tarea1.joseandres.memoria.TablaPaginas;
 public class SimuladorGUI extends JFrame {
 
     // =========================================================================
-    // ESTADO DEL SISTEMA
+    // ESTADO DEL SISTEMA 2.0
     // =========================================================================
     private Kernel kernel;
     private Memoria memoria;
