@@ -19,25 +19,24 @@ public class Scheduler {
     public Scheduler() {
         this.readyQueue = new ArrayList<>();
     }
-    // Aquí inyectas la estrategia (FCFS, SJF, etc.)
+    
     public void setEstrategia(EstrategiaPlanificacion estrategia) {
         this.estrategia = estrategia;
     }
 
-    public void agregarProceso(BCP proceso) {
+    public synchronized void agregarProceso(BCP proceso) {
         proceso.estado = "PREPARADO";
         this.readyQueue.add(proceso);
     }
 
-    public BCP obtenerSiguiente() {
+    public synchronized BCP obtenerSiguiente() {
         if (estrategia == null) {
             System.err.println("Error: No se ha configurado una estrategia de planificación.");
             return null;
         }
-        //Usamos FCFS
+
         BCP seleccionado = estrategia.seleccionarSiguiente(readyQueue);
-        
-        // Si se seleccionó uno, lo sacamos de la cola de listos
+
         if (seleccionado != null) {
             readyQueue.remove(seleccionado);
         }

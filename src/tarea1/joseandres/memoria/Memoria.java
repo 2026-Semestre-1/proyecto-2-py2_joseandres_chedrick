@@ -8,11 +8,7 @@ package tarea1.joseandres.memoria;
 /**
  *
  * @author joses
- * Dentro de la clase memoria debemos tener los siguientes cuidados:
- * Ahora la memoria viene dada por config json
- * (0-19)-> Sistema Operativo.
- * (20-99) -> Usuario.
- * Ademas debemos validar que no se hagan escrituras fuera de rango
+ * 
  */
 public class Memoria {
     private String[] memoria;
@@ -35,6 +31,14 @@ public class Memoria {
     
    
     // --- MÉTODOS DE GESTIÓN (Para el Kernel/Orquestador) AYuda con chat---
+    
+    
+    // Método directo para inyección de código 
+    public void escribirCeldaDirecta(int direccion, String dato) {
+        if (direccion >= 0 && direccion < tamanoTotal) {
+            memoria[direccion] = dato;
+        }
+    }
     
     /**
      * Busca un bloque de celdas contiguas vacías en la zona de usuario.
@@ -115,6 +119,8 @@ public class Memoria {
     if (direccion >= inicioUsuario && direccion < tamanoTotal) {
         memoria[direccion] = "00000";
     }
+    
+    
 }
     
     

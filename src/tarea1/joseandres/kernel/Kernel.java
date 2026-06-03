@@ -12,7 +12,6 @@ import tarea1.joseandres.algoritmos.PlanificadorFCFS;
 import tarea1.joseandres.memoria.MemoriaFija;
 import tarea1.joseandres.memoria.MemoriaDinamica;
 
-
 public class Kernel {
 
     private Memoria ram;
@@ -22,6 +21,7 @@ public class Kernel {
 
     private MemoriaFija memoriaFija;
     private MemoriaDinamica memoriaDinamica;
+    private tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada;
     private String tipoMemoria;
     private String algoritmoAsignacion;
 
@@ -31,29 +31,30 @@ public class Kernel {
     private java.util.List<BCP> listaProcesos = new java.util.ArrayList<>(); // lista global de procesos
     private Queue<BCP> colaEsperaAdmision = new LinkedList<>();
 
-    public Kernel(int tamanoRam, int tamanoDisco, int porcentajeKernel, int porcentajeIndiceDisco, String tipoMemoria, int cantParticiones, int[] tamanosParticiones) {
+    // Cambiá el constructor para recibir el tamanoPagina dinámico desde el JSON
+    public Kernel(int tamanoRam, int tamanoDisco, int porcentajeKernel, int porcentajeIndiceDisco,
+            String tipoMemoria, int cantParticiones, int[] tamanosParticiones, int tamanoPagina) {
 
-        //  Guardamos el tipo de memoria globalmente para que no sea null
         System.out.println("El tipo de memoria leído es: " + tipoMemoria);
-        this.tipoMemoria = tipoMemoria; 
-        
+        this.tipoMemoria = tipoMemoria;
+
         this.ram = new Memoria(tamanoRam, porcentajeKernel);
         this.disco = new Disco(tamanoDisco, porcentajeIndiceDisco);
         this.loader = new Loader(this.disco);
         this.scheduler = new Scheduler();
         this.scheduler.setEstrategia(new PlanificadorFCFS());
 
-        // Inicializamos ambos enviando la RAM real
         this.memoriaFija = new MemoriaFija(this.ram);
         this.memoriaDinamica = new MemoriaDinamica(this.ram);
-        
-        // Guardamos el algoritmo de asignación
+
+        //cantidad de las fragmetaciones
+        this.memoriaPaginada = new tarea1.joseandres.memoria.MemoriaPaginada(this.ram, tamanoPagina);
+
         this.algoritmoAsignacion = algoritmoAsignacion;
 
         inicializarGestorMemoria(cantParticiones, tamanosParticiones);
     }
 
-  
     private void inicializarGestorMemoria(int cantParticiones, int[] tamanosParticiones) {
         String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
 
@@ -66,41 +67,63 @@ public class Kernel {
         } else if (tipoLimpio.contains("DINAM")) {
             this.memoriaDinamica.inicializarMemoriaDinamica();
             System.out.println("KERNEL: Memoria Dinámica (Best-Fit) inicializada correctamente.");
+        } else if (tipoLimpio.contains("PAGIN")) {
+
+            System.out.println("KERNEL: Gestión No Contigua por Paginación Pura (Bitmap) Activa.");
         }
     }
 
-   
     private boolean asignarMemoriaGestor(BCP proceso) {
         String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
 
         if (tipoLimpio.contains("DINAM")) {
             return memoriaDinamica.asignarProceso(proceso);
+        } else if (tipoLimpio.contains("PAGIN")) {
+            return true;
         } else {
             return memoriaFija.asignarProceso(proceso, this.algoritmoAsignacion);
         }
     }
-    
-  
+
     private void liberarMemoriaGestor(BCP proceso) {
         String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
 
         if (tipoLimpio.contains("DINAM")) {
             memoriaDinamica.liberarBloquePorProceso(proceso);
+        } else if (tipoLimpio.contains("PAGIN")) {
+            memoriaPaginada.liberarProcesoPaginado(proceso); // MAPA BITS
         } else {
             memoriaFija.liberarParticionPorProceso(proceso);
         }
     }
 
-    public BCP solicitarSiguienteProceso() {
+    public synchronized BCP solicitarSiguienteProceso() {
         return scheduler.obtenerSiguiente();
     }
 
-    public Memoria getRam() { return ram; }
-    public Disco getDisco() { return disco; }
-    public Scheduler getScheduler() { return scheduler; }
-    public java.util.List<BCP> getListaProcesos() { return listaProcesos; }
-    public MemoriaFija getMemoriaFija() { return memoriaFija; }
-    public MemoriaDinamica getMemoriaDinamica() { return memoriaDinamica; }
+    public Memoria getRam() {
+        return ram;
+    }
+
+    public Disco getDisco() {
+        return disco;
+    }
+
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    public java.util.List<BCP> getListaProcesos() {
+        return listaProcesos;
+    }
+
+    public MemoriaFija getMemoriaFija() {
+        return memoriaFija;
+    }
+
+    public MemoriaDinamica getMemoriaDinamica() {
+        return memoriaDinamica;
+    }
 
     public boolean cargarProceso(String rutaAsm) {
         int tamanoReal = loader.cargaArchivoADisco(rutaAsm);
@@ -125,7 +148,7 @@ public class Kernel {
         return admitirProcesoDesdeDisco(archivo.getName(), tamanoReal);
     }
 
-    public void finalizarProceso(BCP proceso) {
+    public synchronized void finalizarProceso(BCP proceso) {
         if (proceso == null) {
             return;
         }
@@ -135,24 +158,49 @@ public class Kernel {
 
     private boolean admitirProcesoDesdeDisco(String nombreArchivo, int tamanoReal) {
         BCP provisional = new BCP(contadorProcesos, nombreArchivo, -1, tamanoReal);
+        String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
 
+        int direccionInicioEnDisco = disco.getDireccionInicioArchivo(nombreArchivo);
+        if (direccionInicioEnDisco == -1) {
+            System.err.println("KERNEL: No se encontró " + nombreArchivo + " en el índice del disco.");
+            return false;
+        }
+        //Ayuda de chatGPT
+        // =====================================================================
+        // ADMISIÓN POR PAGINACIÓN PURA (NO CONTIGUA)
+        // =====================================================================
+        if (tipoLimpio.contains("PAGIN")) {
+            // Extraemos las líneas de código del disco para pasárselas al cargador segmentado
+            java.util.List<String> instrucciones = new java.util.ArrayList<>();
+            for (int i = 0; i < tamanoReal; i++) {
+                instrucciones.add(disco.leer(direccionInicioEnDisco + i));
+            }
+
+            // El gestor de paginación evalúa el Mapa de Bits, si hay campo inyecta y crea la Tabla de Páginas
+            boolean exitoPaginacion = memoriaPaginada.asignarProcesoPaginado(provisional, instrucciones);
+            if (!exitoPaginacion) {
+                System.err.println("KERNEL-PAGINACIÓN: RAM Saturada (Sin marcos libres). " + nombreArchivo + " retenido en espera.");
+                return false;
+            }
+
+            contadorProcesos++;
+            scheduler.agregarProceso(provisional);
+            listaProcesos.add(provisional);
+            System.out.println("SISTEMA: Proceso " + nombreArchivo + " admitido bajo PAGINACIÓN NO CONTIGUA.");
+            return true;
+        }
+
+        // =====================================================================
+        // RUTA B: ADMISIÓN CONTIGUA TRADICIONAL (FIJA / DINÁMICA)
+        // =====================================================================
         boolean exitoAsignacion = asignarMemoriaGestor(provisional);
-
         if (!exitoAsignacion) {
             System.err.println("KERNEL: No se encontró espacio disponible en el esquema [" + tipoMemoria + "] para admitir " + nombreArchivo + " (Requiere: " + tamanoReal + " celdas)");
             return false;
         }
 
         int direccionBase = provisional.getDireccionBase();
-        contadorProcesos++; 
-
-        int direccionInicioEnDisco = disco.getDireccionInicioArchivo(nombreArchivo);
-
-        if (direccionInicioEnDisco == -1) {
-            System.err.println("KERNEL: No se encontró " + nombreArchivo + " en el índice del disco.");
-            liberarMemoriaGestor(provisional);
-            return false;
-        }
+        contadorProcesos++;
 
         for (int i = 0; i < tamanoReal; i++) {
             String instruccion = disco.leer(direccionInicioEnDisco + i);
@@ -166,6 +214,7 @@ public class Kernel {
         return true;
     }
 
+    //Ayuda de chatGPT
     public void intentarPromoverDesdeEspera() {
         if (colaEsperaAdmision.isEmpty() || contarProcesosActivos() >= MAX_PROCESOS_ACTIVOS) {
             return;
@@ -176,40 +225,65 @@ public class Kernel {
             return;
         }
 
-        //  Evaluamos espacio usando el Gestor Unificado, no memoriaFija directamente
+        String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
+        int direccionInicioEnDisco = disco.getDireccionInicioArchivo(esperando.nombreProceso);
+
+        // =====================================================================
+        //  PROMOVEmos POR PAGINACIÓN PURA (NO CONTIGUA)
+        // =====================================================================
+        if (tipoLimpio.contains("PAGIN")) {
+            java.util.List<String> instrucciones = new java.util.ArrayList<>();
+            for (int i = 0; i < esperando.getAlcance(); i++) {
+                instrucciones.add(disco.leer(direccionInicioEnDisco + i));
+            }
+
+            boolean exito = memoriaPaginada.asignarProcesoPaginado(esperando, instrucciones);
+            if (!exito) {
+                return; // Sigue esperando en disco si no hay marcos libres
+            }
+            scheduler.agregarProceso(esperando);
+            colaEsperaAdmision.poll();
+            System.out.println("KERNEL: Proceso " + esperando.nombreProceso + " promovido a PAGINACIÓN desde ESPERA_ADMISION.");
+            return;
+        }
+
+        // =====================================================================
+        // PROMOVEMOS POR RUTA CONTIGUA TRADICIONAL (FIJA / DINÁMICA)
+        // =====================================================================
+        // Evaluamos espacio usando el Gestor Unificado
         boolean exitoAsignacion = asignarMemoriaGestor(esperando);
         if (!exitoAsignacion) {
             System.out.println("KERNEL: Hay procesos en cola de admisión, pero el esquema [" + tipoMemoria + "] no tiene huecos adecuados en este momento.");
             return;
         }
 
-        int direccionBase = esperando.getDireccionBase();
-        int direccionInicioEnDisco = disco.getDireccionInicioArchivo(esperando.nombreProceso);
-        
         if (direccionInicioEnDisco == -1) {
             System.err.println("KERNEL: No se encontró en disco el proceso en espera " + esperando.nombreProceso);
             colaEsperaAdmision.poll();
             esperando.estado = "ERROR";
-            liberarMemoriaGestor(esperando); 
+            liberarMemoriaGestor(esperando);
             return;
         }
+
+        int direccionBase = esperando.getDireccionBase();
 
         for (int i = 0; i < esperando.getAlcance(); i++) {
             String instruccion = disco.leer(direccionInicioEnDisco + i);
             ram.escribirSeguro(direccionBase + i, instruccion, direccionBase, esperando.getAlcance());
         }
 
-        scheduler.agregarProceso(esperando); 
-        colaEsperaAdmision.poll(); 
+        scheduler.agregarProceso(esperando);
+        colaEsperaAdmision.poll();
 
         System.out.println("KERNEL: Proceso " + esperando.nombreProceso + " promovido desde ESPERA_ADMISION con base: " + direccionBase);
     }
 
+    //Reconoce los procesos corriendo
     private int contarProcesosActivos() {
         int total = 0;
         for (BCP p : listaProcesos) {
             if (p.estado.equals("PREPARADO")
-                    || p.estado.equals("EJECUCION (CPU)")
+                    || p.estado.startsWith("EJECUCION") // <--- Captura CPU 0, CPU 1, CPU 2, etc.
                     || p.estado.equals("ESPERA")) {
                 total++;
             }
@@ -218,20 +292,37 @@ public class Kernel {
     }
 
     private void liberarMemoriaProceso(BCP proceso) {
-        if (proceso.getDireccionBase() == -1) {
+        String tipoLimpio = (this.tipoMemoria != null) ? this.tipoMemoria.trim().toUpperCase() : "";
+
+        if (tipoLimpio.contains("PAGIN")) {
+            liberarMemoriaGestor(proceso); // Limpia mapa de bits y celdas correspondientes
+            System.out.println("KERNEL: Recursos de hardware liberados por Paginación para " + proceso.nombreProceso);
             return;
         }
 
+        if (proceso.getDireccionBase() == -1) {
+            return;
+        }
         int base = proceso.getDireccionBase();
         int alcance = proceso.getAlcance();
-
         for (int i = 0; i < alcance; i++) {
             ram.liberarCelda(base + i);
         }
-
         liberarMemoriaGestor(proceso);
-
         proceso.setDireccionBase(-1);
         System.out.println("KERNEL: Recursos de hardware y mapa de memoria [" + tipoMemoria + "] actualizados exitosamente para el proceso " + proceso.nombreProceso);
+    }
+
+    public synchronized void devolverAColaListos(BCP proceso) {
+        if (proceso == null) {
+            return;
+        }
+        proceso.estado = "PREPARADO";
+        proceso.cpuAsignada = -1; // Soltamos la CPU
+        scheduler.agregarProceso(proceso);
+    }
+    
+    public tarea1.joseandres.memoria.MemoriaPaginada getMemoriaPaginada() {
+        return this.memoriaPaginada;
     }
 }
