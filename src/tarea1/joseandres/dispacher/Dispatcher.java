@@ -21,23 +21,18 @@ public class Dispatcher {
         this.ram = ram;
     }
 
-    public void despachar(BCP proceso) {
-        if (proceso == null) {
-            return;
-        }
+   public void despachar(BCP proceso, int cpuId) {
+        if (proceso == null) return;
 
-        //Cambiamos el estado 
-        proceso.estado = "EJECUCION (CPU)";
+        proceso.estado = "EJECUCION (CPU " + cpuId + ")";
+        proceso.cpuAsignada = cpuId;
 
-        // Registramos tiempo de inicio si es la primera vez que entra
         if (proceso.tiempoInicio == 0) {
             proceso.tiempoInicio = System.currentTimeMillis();
         }
 
-        //Sincronizamos con la RAM (Zona Kernel) 
         actualizarBcpEnKernel(proceso);
-
-        System.out.println("DISPATCHER: Proceso " + proceso.nombreProceso + " puesto en ejecución.");
+        System.out.println("DISPATCHER: Proceso " + proceso.nombreProceso + " asignado a CPU " + cpuId);
     }
 
     public void actualizarBcpEnKernel(BCP p) {
@@ -62,9 +57,9 @@ public class Dispatcher {
         ram.escribirEnKernel(offset + 7, "BX:" + p.BX);
         ram.escribirEnKernel(offset + 8, "CX:" + p.CX);
         ram.escribirEnKernel(offset + 9, "DX:" + p.DX);
-        ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
-        ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
-        ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
-        ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
+//        ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
+//        ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
+//        ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
+//        ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
     }
 }

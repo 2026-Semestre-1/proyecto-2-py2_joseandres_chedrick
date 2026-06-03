@@ -9,6 +9,13 @@ package tarea1.joseandres.proceso;
  * @author joses
  */
 public class BCP {
+    
+    public int cpuAsignada = -1;       // ID de la CPU que lo ejecuta (-1 si está libre)
+    public int tiquetesLoteria = 0;    // Para el algoritmo de Lottery
+    
+    public int rafagaTotal = 0;        // Tamaño total en instrucciones
+    public int rafagaRestante = 0;     // Cuántas instrucciones le quedan
+    public int rafagaEjecutada = 0;    // Cuántas instrucciones lleva en la ráfaga actual
 
     // Identificador y estado
     public String nombreProceso;
@@ -16,50 +23,59 @@ public class BCP {
     // Estado del proceso 
     public String estado; // "EJECUTANDO", "TERMINADO", "ERROR")
    
-    
     // Registros de Control 
     public int PC;      // Program Counter (Puntero a la instruccion actual)
     public String IR;   // Instruction Register (Guarda el texto de la instrucciion) eje: 011 BX 10
 
-    // Registros de Datos (Los que guardan valores
+    // Registros de Datos (Los que guardan valores)
     public int AC; // Acumulador (Resultado de ADD, SUB, etc.)
     public int AX; // Registro general A
     public int BX; // Registro general B
     public int CX; // Registro general C
     public int DX; // Registro general D
-    //REGISTROS ESPECIALES PARA INT
+    // REGISTROS ESPECIALES PARA INT
     public int AH;
     public int AL;
-    //Gestion de memoria
-    public int direccionBase; //Donde estara el inicio de la RAM fisica
+    // Gestion de memoria
+    public int direccionBase; // Donde estara el inicio de la RAM fisica
     public int alcance; // Cuanto abarca para no salir del rango
 
-    //Pila
+    //  Atributo para la tabla de páginas del proceso en modo paginado
+    private tarea1.joseandres.memoria.TablaPaginas tablaPaginas;
+    public boolean esPaginado = false;
+
+    // Pila
     public int[] pila = new int[5];
     public int SP = -1; // iniciamos en vacio stackPointer
 
-    //Estadistica
+    // Estadistica
     public long tiempoLlegada;
     public long tiempoInicio;
     public long tiempoFinal;
-    public int ciclosConsumidos;//Pesos.
-    public boolean flagIgual;//Bandera pensada para hacer ldas comparaciones(CMP, JE y JNE).
+    public int ciclosConsumidos; // Pesos.
+    public boolean flagIgual; // Bandera pensada para hacer las comparaciones (CMP, JE y JNE).
 
-    //Bloque Control de Proceso -> BCP
+    // Bloque Control de Proceso -> BCP
     public BCP(int id, String nombre, int direccionBase, int alcance) {
         this.id = id;
         this.nombreProceso = nombre;
         this.direccionBase = direccionBase;
         this.alcance = alcance;
         this.flagIgual = false;
-        // Capturamos el tiempo de creacio para las stats
         this.tiempoLlegada = System.currentTimeMillis();
         this.ciclosConsumidos = 0;
         
         this.estado = "NUEVO"; // Estado correcto mientras está en disco
      
-        // PC 
-        this.PC = direccionBase;
+         
+        // Si base es -1 (Paginado), el PC virtual inicia en 0. Si no, toma la dirección física base.
+        this.PC = (direccionBase == -1) ? 0 : direccionBase;
+        
+        this.rafagaTotal = alcance;     // El tamaño del archivo cargado determina sus instrucciones totales
+        this.rafagaRestante = alcance;  // Al inicio le queda todo por ejecutar
+        this.rafagaEjecutada = 0;       
+        this.cpuAsignada = -1;          // Libre
+        this.tiquetesLoteria = 0;       
 
         // Inicialización de Registros
         this.AC = 0;
@@ -69,15 +85,9 @@ public class BCP {
         this.DX = 0;
         this.AH = 0;
         this.AL = 0;
-        this.IR = "00000"; // Ahora usamos 5 bits 
+        this.IR = "00000"; 
 
-        // La pila inicia vacía 
         this.SP = -1;
-
-      
-        
-        // Capturamos el tiempo de creación para estadísticas
-        this.tiempoLlegada = System.currentTimeMillis();
     }
 
     // Metodo Push
@@ -97,24 +107,33 @@ public class BCP {
         return -999; 
     }
     
-    
-    //(GETTERS Y SETTERS) 
-
+    // GETTERS Y SETTERS
     public int getDireccionBase() {
         return direccionBase;
     }
 
     public void setDireccionBase(int direccionBase) {
         this.direccionBase = direccionBase;
-        this.PC = direccionBase;
+        // Solo alteramos el PC si no es un esquema virtual/paginado
+        if (direccionBase != -1) {
+            this.PC = direccionBase;
+        }
     }
 
     public int getAlcance() {
         return alcance;
     }
 
+
+    public tarea1.joseandres.memoria.TablaPaginas getTablaPaginas() {
+        return this.tablaPaginas;
+    }
+
+    public void setTablaPaginas(tarea1.joseandres.memoria.TablaPaginas tabla) {
+        this.tablaPaginas = tabla;
+    }
+
     public void mostrarRegistros() {
-        // 1. Construimos una representación visual de la pila (ej: [5, 10, 0, 0, 0])
         StringBuilder stackView = new StringBuilder("[");
         for (int i = 0; i < pila.length; i++) {
             stackView.append(pila[i]);
@@ -124,7 +143,6 @@ public class BCP {
         }
         stackView.append("]");
 
-        // 2. Imprimimos toda la información relevante del proceso
         System.out.println("---------------------------------------------------------------------------------------");
         System.out.println(String.format("PROCESO: %-15s | ID: %d | ESTADO: %s", nombreProceso, id, estado));
         System.out.println(String.format("REGISTROS -> PC: %03d | IR: %-10s | AC: %d", PC, IR, AC));
@@ -133,5 +151,4 @@ public class BCP {
         System.out.println(String.format("MEMORIA   -> Base: %d | Alcance: %d", direccionBase, alcance));
         System.out.println("---------------------------------------------------------------------------------------");
     }
-
 }

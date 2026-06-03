@@ -23,13 +23,11 @@ public class MemoriaFija {
         this.particiones = new ArrayList<>();
     }
 
-    // =========================================================
-    // 1. CONFIGURACIÓN E INICIALIZACIÓN DE PARTICIONES
-    // =========================================================
+
     /**
      * Crea particiones de idéntico tamaño (Fragmentación Fija Estática).
      */
-    // En MemoriaFija.java
+ 
     public void crearParticionesVariables(int[] tamanosParticiones) {
         particiones.clear();
         int inicioUsuario = memoriaReal.getInicioUsuario();
@@ -172,7 +170,7 @@ public class MemoriaFija {
     public boolean asignarProceso(BCP proceso, String algoritmo) {
         Particion particionSeleccionada = null;
 
-        //  FIJA IGUAL 
+        // --- ESCENARIO 1: FIJA IGUAL ---
         // No requiere evaluar menor desperdicio, agarra la primera libre secuencial
         if (algoritmo != null && algoritmo.equalsIgnoreCase("FIJA_IGUAL")) {
             for (Particion p : particiones) {
@@ -181,7 +179,7 @@ public class MemoriaFija {
                     break; // Rompemos inmediatamente para optimizar
                 }
             }
-        } // BEST-FIT (Para FIJA_VARIABLE)
+        } // --- ESCENARIO 2: BEST-FIT (Para FIJA_VARIABLE) ---
         else {
             int menorDesperdicio = Integer.MAX_VALUE;
             for (Particion p : particiones) {
