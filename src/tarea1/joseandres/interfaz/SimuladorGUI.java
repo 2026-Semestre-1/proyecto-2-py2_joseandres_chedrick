@@ -1,5 +1,6 @@
 package tarea1.joseandres.interfaz;
 
+import ThreadUtils.ProcesoCargaCallback;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -23,6 +24,11 @@ import static tarea1.joseandres.loader.Loader.traducirInstruccion;
 import tarea1.joseandres.memoria.Particion;
 import tarea1.joseandres.memoria.MemoriaPaginada;
 import tarea1.joseandres.memoria.TablaPaginas;
+import ThreadUtils.CronometroThread;
+import ThreadUtils.ObservadorCargaThread;
+import tarea1.joseandres.algoritmos.PlanificadorFCFS;
+import tarea1.joseandres.algoritmos.PlanificadorHRRN;
+import tarea1.joseandres.algoritmos.PlanificadorSJF;
 
 public class SimuladorGUI extends JFrame {
 
@@ -60,6 +66,9 @@ public class SimuladorGUI extends JFrame {
     private DefaultTableModel modeloTablaPaginas;
     private JTable            tablaPaginasVisual;
     private JPanel            panelTablaPaginas;
+    private CronometroThread cronometro;
+    private ObservadorCargaThread observador;
+    private List<Object[]> configuracionProcesos = new ArrayList<>();
 
     private int pidActualVisual = 1;
     private final Map<Integer, Color> coloresPID      = new HashMap<>();
@@ -265,6 +274,20 @@ public class SimuladorGUI extends JFrame {
             cantidadCpusActiva = (Integer) comboCpus.getSelectedItem();
             aplicarEstadoVisualPanelesCpu();
         });
+        JLabel lblAlgoritmo = new JLabel("Algoritmo planificador:");
+        lblAlgoritmo.setForeground(Color.WHITE);
+        lblAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
+
+        JComboBox comboAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery"});
+        comboAlgoritmo.setBackground(new Color(60, 60, 60));
+        comboAlgoritmo.setForeground(Color.WHITE);
+        comboAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
+        comboAlgoritmo.setPreferredSize(new Dimension(110, 28));
+
+        // Acción opcional: imprimir en terminal cuando cambia el algoritmo
+        comboAlgoritmo.addActionListener(e ->
+            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem())
+        );
 
         btnCargar.addActionListener(e -> menuCargarArchivo());
        // btnPaso.addActionListener(e -> ejecutarPasoAPaso());
@@ -280,9 +303,27 @@ public class SimuladorGUI extends JFrame {
         panel.add(comboCpus);
         panel.add(btnIniciar);
         panel.add(Box.createHorizontalStrut(16));
+        panel.add(lblAlgoritmo);
+        panel.add(comboAlgoritmo);
        // panel.add(btnLimpiar);
 
         return panel;
+    }
+    private void setearAlgoritmo(String algoritmo){
+        switch(algoritmo){
+            case "FCFS":
+                this.kernel.colocarEstrategia(new PlanificadorFCFS());
+                break;
+            case "HRRN":
+                this.kernel.colocarEstrategia(new PlanificadorHRRN());
+                break;
+            case "SJF":
+                this.kernel.colocarEstrategia(new PlanificadorSJF());
+                break;
+            default:
+                this.kernel.colocarEstrategia(new PlanificadorFCFS());
+                break;
+        }
     }
 
     // =========================================================================
@@ -623,76 +664,84 @@ public class SimuladorGUI extends JFrame {
     private void iniciarCpusEnHilos() {
         // ── Detener ejecución previa ──────────────────────────────────────────
         if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
-        for (Cpu c : cpus)    c.setCorriendo(false);
+        for (Cpu c : cpus)     c.setCorriendo(false);
         for (Thread t : hilosCpu) t.interrupt();
 
-        // ── 1. Cuántas CPUs pidió el usuario ─────────────────────────────────
-        int cpusAInterpretar = Integer.parseInt(comboCpus.getSelectedItem().toString());
+        // ── Detener threads de carga previos ─────────────────────────────────
+        if (cronometro != null) cronometro.interrupt();
+        if (observador != null) observador.interrupt();
 
-        // ── 2. Limpiar listas antes de rellenar ───────────────────────────────
+        // ── 1. CPUs ───────────────────────────────────────────────────────────
+        int cpusAInterpretar = Integer.parseInt(comboCpus.getSelectedItem().toString());
         cpus.clear();
         hilosCpu.clear();
 
-        // ── 3. Levantar hilos con callback visual ─────────────────────────────
         for (int i = 0; i < cpusAInterpretar; i++) {
             tarea1.joseandres.memoria.MemoriaPaginada mpCpu = null;
             try { mpCpu = this.kernel.getMemoriaPaginada(); } catch (Exception _ignored) {}
+
             Cpu nuevaCpu = new Cpu(i, this.kernel, this.memoria, this.dispatcher, this.disco, mpCpu);
             nuevaCpu.setDelayReloj(1200);
             nuevaCpu.setCorriendo(true);
 
-            // Callback: se ejecuta en el EDT tras cada instrucción de ESTA CPU
-            final int cpuId = i;
+            final int cpuId  = i;
             final Cpu cpuRef = nuevaCpu;
             nuevaCpu.setPasoCallback((id, bcp) -> {
-                // a) Actualizar bcpActual — el renderizador de RAM lo usa para
-                //    saber qué proceso está activo y colorear su fila
                 bcpActual = bcp;
-
-                // b) Pintar registros del panel de esta CPU
                 actualizarPanelCpu(id, bcp);
-
-                // c) Actualizar el puntero del renderizador con la dirección IR
-                //    exacta que acaba de ejecutar esta CPU → marca la fila activa
                 int dirIR = cpuRef.getDireccionIRActual();
                 renderizadorMemoria.setPuntero(id, dirIR);
-
-                // d) Repintar SOLO la tabla RAM (sin reconstruir el modelo completo)
-                //    — es lo que mueve el marcador de fila visualmente
                 tablaMemoriaFisica.repaint();
-
-                // e) Scroll automático hacia la instrucción que se está ejecutando
                 if (dirIR >= 0 && dirIR < tablaMemoriaFisica.getRowCount()) {
                     tablaMemoriaFisica.scrollRectToVisible(
-                        tablaMemoriaFisica.getCellRect(dirIR, 0, true));
+                            tablaMemoriaFisica.getCellRect(dirIR, 0, true));
                 }
-
-                // f) Actualizar estado del proceso en la tabla ("EJECUCION (CPU X)")
                 if (bcp != null) {
                     actualizarEstadoProcesoPorId(bcp.id, "EJECUCION (CPU " + cpuId + ")");
                 }
-
-                // g) Repintar tabla de procesos y particiones
                 tablaProcesos.repaint();
                 tablaParticiones.repaint();
-
-                // h) Cada 4 pasos reconstruir el modelo completo de RAM para
-                //    mantener consistencia de contenido en todas las celdas
-                if (dirIR % 4 == 0) {
-                    actualizarTablas();
-                }
+                if (dirIR % 4 == 0) actualizarTablas();
             });
 
             cpus.add(nuevaCpu);
-
             Thread hilo = new Thread(nuevaCpu, "CPU-" + i);
             hilosCpu.add(hilo);
-            hilo.start(); // ¡Cobran vida al mismo tiempo!
-
+            hilo.start();
             imprimirEnTerminal("CPU " + (i + 1) + " iniciada en hilo independiente.");
         }
 
         aplicarEstadoVisualPanelesCpu();
+
+        // ── 2. Cronómetro + Observador de carga (solo si hay procesos en cola) ─
+        if (!configuracionProcesos.isEmpty()) {
+
+            ProcesoCargaCallback callback = (nombre, ruta) -> {
+                boolean cargado = kernel.cargarProceso(ruta);
+                if (cargado) {
+                    imprimirEnTerminal("CARGADO: " + nombre);
+                } else {
+                    imprimirEnTerminal("ERROR al cargar: " + nombre);
+                    JOptionPane.showMessageDialog(this,
+                            "Memoria insuficiente para cargar: " + nombre,
+                            "Error de carga", JOptionPane.ERROR_MESSAGE);
+                }
+                actualizarTablas();
+            };
+
+            cronometro = new CronometroThread();
+            observador = new ObservadorCargaThread(configuracionProcesos, callback);
+
+            cronometro.agregarObserver(observador);
+
+            observador.setDaemon(true);
+            cronometro.setDaemon(true);
+
+            observador.start();
+            cronometro.start();
+
+            imprimirEnTerminal("▶ Cronómetro iniciado junto con las CPUs.");
+        }
     }
 
     /**
@@ -803,27 +852,74 @@ public class SimuladorGUI extends JFrame {
     }
 
     // =========================================================================
-    // CARGA DE ARCHIVOS
+    // CARGA DE ARCHIVOS hay que venir aquí
     // =========================================================================
     private void menuCargarArchivo() {
         JFileChooser chooser = new JFileChooser();
         chooser.setMultiSelectionEnabled(true);
 
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            for (File f : chooser.getSelectedFiles()) {
-                boolean cargado = kernel.cargarProceso(f.getAbsolutePath());
-                if (cargado) {
-                    imprimirEnTerminal("CARGADO: " + f.getName());
-                } else {
-                    imprimirEnTerminal("ERROR al cargar: " + f.getName());
-                    JOptionPane.showMessageDialog(this,
-                            "Memoria insuficiente para cargar: " + f.getName(),
-                            "Error de carga", JOptionPane.ERROR_MESSAGE);
-                }
+            File[] archivosSeleccionados = chooser.getSelectedFiles();
+
+            // ── Ventana de configuración ──────────────────────────────────────
+            JDialog dialogo = new JDialog(this, "Configuración de procesos", true);
+            dialogo.setLayout(new BorderLayout(10, 10));
+
+            JLabel titulo = new JLabel("Configura el tiempo de llegada de cada proceso");
+            titulo.setFont(new Font("SansSerif", Font.BOLD, 14));
+            titulo.setHorizontalAlignment(SwingConstants.CENTER);
+            titulo.setBorder(BorderFactory.createEmptyBorder(12, 10, 4, 10));
+            dialogo.add(titulo, BorderLayout.NORTH);
+
+            JPanel panelArchivos = new JPanel(new GridLayout(archivosSeleccionados.length, 2, 10, 8));
+            panelArchivos.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+
+            JSpinner[] spinners = new JSpinner[archivosSeleccionados.length];
+            for (int i = 0; i < archivosSeleccionados.length; i++) {
+                JLabel nombreLabel = new JLabel(archivosSeleccionados[i].getName());
+                nombreLabel.setToolTipText(archivosSeleccionados[i].getAbsolutePath());
+
+                SpinnerNumberModel modelo = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
+                spinners[i] = new JSpinner(modelo);
+                spinners[i].setPreferredSize(new Dimension(80, 28));
+
+                panelArchivos.add(nombreLabel);
+                panelArchivos.add(spinners[i]);
             }
-            actualizarTablas();
+
+            JScrollPane scroll = new JScrollPane(panelArchivos);
+            scroll.setBorder(BorderFactory.createEmptyBorder());
+            dialogo.add(scroll, BorderLayout.CENTER);
+
+            JButton btnConfirmar = new JButton("Confirmar configuración");
+            JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            panelBoton.add(btnConfirmar);
+            panelBoton.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+            dialogo.add(panelBoton, BorderLayout.SOUTH);
+
+            // ── Al confirmar: solo guardar la configuración ───────────────────
+            btnConfirmar.addActionListener(e -> {
+                // Acumular en la lista persistente (permite cargar varias veces)
+                for (int i = 0; i < archivosSeleccionados.length; i++) {
+                    configuracionProcesos.add(new Object[]{
+                            archivosSeleccionados[i].getName(),
+                            archivosSeleccionados[i].getAbsolutePath(),
+                            (int) spinners[i].getValue()
+                    });
+                    imprimirEnTerminal("EN COLA: " + archivosSeleccionados[i].getName()
+                            + " → llegada en segundo " + (int) spinners[i].getValue()
+                            + " (" + CronometroThread.formatear((int) spinners[i].getValue()) + ")");
+                }
+                dialogo.dispose();
+                imprimirEnTerminal("✔ Configuración guardada. Pulsa 'Iniciar CPUs' para comenzar.");
+            });
+
+            dialogo.pack();
+            dialogo.setMinimumSize(new Dimension(420, 200));
+            dialogo.setLocationRelativeTo(this);
+            dialogo.setVisible(true);
         }
-    }
+}
 
     // =========================================================================
     // TERMINAL

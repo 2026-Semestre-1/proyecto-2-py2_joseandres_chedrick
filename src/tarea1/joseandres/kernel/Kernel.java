@@ -8,7 +8,7 @@ import tarea1.joseandres.disco.Disco;
 import tarea1.joseandres.administrador.Scheduler;
 import tarea1.joseandres.proceso.BCP;
 import tarea1.joseandres.loader.Loader;
-import tarea1.joseandres.algoritmos.PlanificadorFCFS;
+import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import tarea1.joseandres.memoria.MemoriaFija;
 import tarea1.joseandres.memoria.MemoriaDinamica;
 
@@ -18,7 +18,6 @@ public class Kernel {
     private Disco disco;
     private Scheduler scheduler;
     private Loader loader;
-
     private MemoriaFija memoriaFija;
     private MemoriaDinamica memoriaDinamica;
     private tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada;
@@ -42,7 +41,6 @@ public class Kernel {
         this.disco = new Disco(tamanoDisco, porcentajeIndiceDisco);
         this.loader = new Loader(this.disco);
         this.scheduler = new Scheduler();
-        this.scheduler.setEstrategia(new PlanificadorFCFS());
 
         this.memoriaFija = new MemoriaFija(this.ram);
         this.memoriaDinamica = new MemoriaDinamica(this.ram);
@@ -71,6 +69,9 @@ public class Kernel {
 
             System.out.println("KERNEL: Gestión No Contigua por Paginación Pura (Bitmap) Activa.");
         }
+    }
+    public void colocarEstrategia(EstrategiaPlanificacion estrategia){
+        this.scheduler.setEstrategia(estrategia);
     }
 
     private boolean asignarMemoriaGestor(BCP proceso) {
