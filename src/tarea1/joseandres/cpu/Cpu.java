@@ -578,8 +578,8 @@ public class Cpu implements Runnable {
             if (!esperandoEntradaInt09) {
                 int peso = obtenerPesoInstruccion(partes);
                 procesoActual.ciclosConsumidos += peso;
-                procesoActual.rafagaEjecutada++;
-                procesoActual.rafagaRestante--;
+                //procesoActual.rafagaEjecutada++;
+                //procesoActual.rafagaRestante--;
             }
         } catch (Exception e) {
             return marcarErrorProceso("Error en ejecución: " + e.getMessage());
@@ -617,6 +617,9 @@ public class Cpu implements Runnable {
                 procesoActual.rafagaEjecutada++;
                 procesoActual.rafagaRestante--;
             }
+        }
+        if (procesoActual != null){
+            dispatcher.actualizarBcpEnKernel(procesoActual);
         }
 
         return true;

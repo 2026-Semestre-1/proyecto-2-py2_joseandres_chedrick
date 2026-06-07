@@ -22,7 +22,7 @@ public class Dispatcher {
     }
 
    public void despachar(BCP proceso, int cpuId) {
-        if (proceso == null) return;
+        if (proceso == null || proceso.PC >= proceso.alcance) return;
 
         proceso.estado = "EJECUCION (CPU " + cpuId + ")";
         proceso.cpuAsignada = cpuId;

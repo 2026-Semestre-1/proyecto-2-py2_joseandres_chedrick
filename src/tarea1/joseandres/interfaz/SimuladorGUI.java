@@ -344,6 +344,86 @@ public class SimuladorGUI extends JFrame {
                 break;
         }
     }
+    private void configurarAlgoritmo() {
+        String algoritmo = (String) comboAlgoritmo.getSelectedItem();
+        int quantum = (int) comboQuantum.getSelectedItem(); // quantum por defecto; podrías exponerlo en la UI
+
+        tarea1.joseandres.estrategia.EstrategiaPlanificacion estrategia;
+        tarea1.joseandres.estrategia.AlgoritmoPlanificador   descripcion;
+
+        switch (algoritmo) {
+            case "FCFS": {
+                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs =
+                        new tarea1.joseandres.algoritmos.PlanificadorFCFS();
+                estrategia  = fcfs;
+                descripcion = fcfs;
+                break;
+            }
+            case "SJF": {
+                tarea1.joseandres.algoritmos.PlanificadorSJF sjf =
+                        new tarea1.joseandres.algoritmos.PlanificadorSJF();
+                estrategia  = sjf;
+                descripcion = sjf;
+                break;
+            }
+            case "HRRN": {
+                tarea1.joseandres.algoritmos.PlanificadorHRRN hrrn =
+                        new tarea1.joseandres.algoritmos.PlanificadorHRRN();
+                estrategia  = hrrn;
+                descripcion = hrrn;
+                break;
+            }
+            case "RR": {
+                tarea1.joseandres.algoritmos.PlanificadorRoundRobin rr =
+                        new tarea1.joseandres.algoritmos.PlanificadorRoundRobin(quantum);
+                estrategia  = rr;
+                descripcion = rr;
+                break;
+            }
+            case "SRT": {
+                tarea1.joseandres.algoritmos.PlanificadorSRT srt =
+                        new tarea1.joseandres.algoritmos.PlanificadorSRT();
+                estrategia  = srt;
+                descripcion = srt;
+                quantum     = 1;
+                break;
+            }
+            case "SRR": {
+                tarea1.joseandres.algoritmos.PlanificadorSRR srr =
+                        new tarea1.joseandres.algoritmos.PlanificadorSRR(quantum);
+                estrategia  = srr;
+                descripcion = srr;
+                break;
+            }
+            case "Lottery": {
+                tarea1.joseandres.algoritmos.PlanificadorLottery lottery =
+                        new tarea1.joseandres.algoritmos.PlanificadorLottery(quantum);
+                estrategia  = lottery;
+                descripcion = lottery;
+                break;
+            }
+            
+            default: {
+                // Fallback a FCFS
+                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs =
+                        new tarea1.joseandres.algoritmos.PlanificadorFCFS();
+                estrategia  = fcfs;
+                descripcion = fcfs;
+            }
+        }
+
+        // Inyectar en el Scheduler del Kernel
+        kernel.getScheduler().setEstrategia(estrategia, descripcion);
+
+        // Informar a cada CPU si es apropiativo y con qué quantum
+        boolean apropiativo = descripcion.esApropiativo;
+        for (Cpu cpu : cpus) {
+            cpu.setConfiguracionPlanificacion(apropiativo, quantum);
+        }
+
+        imprimirEnTerminal("⚙ Algoritmo: " + algoritmo
+                + (apropiativo ? " | Quantum: " + quantum : " | No apropiativo"));
+    }
 
     // =========================================================================
     // PANEL RAM
@@ -681,17 +761,13 @@ public class SimuladorGUI extends JFrame {
      * Se puede llamar desde el botón "🚀 Iniciar CPUs".
      */
     private void iniciarCpusEnHilos() {
-        // ── Detener ejecución previa ──────────────────────────────────────────
         if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
-        for (Cpu c : cpus)     c.setCorriendo(false);
+        for (Cpu c : cpus)        c.setCorriendo(false);
         for (Thread t : hilosCpu) t.interrupt();
+        if (cronometro != null)   cronometro.interrupt();
+        if (observador != null)   observador.interrupt();
 
-        // ── Detener threads de carga previos ─────────────────────────────────
-        if (cronometro != null) cronometro.interrupt();
-        if (observador != null) observador.interrupt();
-
-        // ── 1. CPUs ───────────────────────────────────────────────────────────
-        int cpusAInterpretar = Integer.parseInt(comboCpus.getSelectedItem().toString());
+        int cpusAInterpretar = (Integer) comboCpus.getSelectedItem();
         cpus.clear();
         hilosCpu.clear();
 
@@ -711,20 +787,22 @@ public class SimuladorGUI extends JFrame {
                 int dirIR = cpuRef.getDireccionIRActual();
                 renderizadorMemoria.setPuntero(id, dirIR);
                 tablaMemoriaFisica.repaint();
-                if (dirIR >= 0 && dirIR < tablaMemoriaFisica.getRowCount()) {
-                    tablaMemoriaFisica.scrollRectToVisible(
-                            tablaMemoriaFisica.getCellRect(dirIR, 0, true));
-                }
-                if (bcp != null) {
+                if (dirIR >= 0 && dirIR < tablaMemoriaFisica.getRowCount())
+                    tablaMemoriaFisica.scrollRectToVisible(tablaMemoriaFisica.getCellRect(dirIR, 0, true));
+                if (bcp != null)
                     actualizarEstadoProcesoPorId(bcp.id, "EJECUCION (CPU " + cpuId + ")");
-                }
                 tablaProcesos.repaint();
                 tablaParticiones.repaint();
                 if (dirIR % 4 == 0) actualizarTablas();
             });
 
             cpus.add(nuevaCpu);
-            Thread hilo = new Thread(nuevaCpu, "CPU-" + i);
+        }
+
+        configurarAlgoritmo();
+
+        for (int i = 0; i < cpus.size(); i++) {
+            Thread hilo = new Thread(cpus.get(i), "CPU-" + i);
             hilosCpu.add(hilo);
             hilo.start();
             imprimirEnTerminal("CPU " + (i + 1) + " iniciada en hilo independiente.");
@@ -732,9 +810,8 @@ public class SimuladorGUI extends JFrame {
 
         aplicarEstadoVisualPanelesCpu();
 
-        // ── 2. Cronómetro + Observador de carga (solo si hay procesos en cola) ─
+        // Cronómetro + Observador
         if (!configuracionProcesos.isEmpty()) {
-
             ProcesoCargaCallback callback = (nombre, ruta) -> {
                 boolean cargado = kernel.cargarProceso(ruta);
                 if (cargado) {
@@ -747,18 +824,13 @@ public class SimuladorGUI extends JFrame {
                 }
                 actualizarTablas();
             };
-
             cronometro = new CronometroThread();
             observador = new ObservadorCargaThread(configuracionProcesos, callback);
-
             cronometro.agregarObserver(observador);
-
             observador.setDaemon(true);
             cronometro.setDaemon(true);
-
             observador.start();
             cronometro.start();
-
             imprimirEnTerminal("▶ Cronómetro iniciado junto con las CPUs.");
         }
     }
