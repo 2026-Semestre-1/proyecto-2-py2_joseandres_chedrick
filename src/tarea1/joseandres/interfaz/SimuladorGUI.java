@@ -28,6 +28,7 @@ import ThreadUtils.CronometroThread;
 import ThreadUtils.ObservadorCargaThread;
 import tarea1.joseandres.algoritmos.PlanificadorFCFS;
 import tarea1.joseandres.algoritmos.PlanificadorHRRN;
+import tarea1.joseandres.algoritmos.PlanificadorRoundRobin;
 import tarea1.joseandres.algoritmos.PlanificadorSJF;
 
 public class SimuladorGUI extends JFrame {
@@ -69,6 +70,8 @@ public class SimuladorGUI extends JFrame {
     private CronometroThread cronometro;
     private ObservadorCargaThread observador;
     private List<Object[]> configuracionProcesos = new ArrayList<>();
+    JComboBox comboQuantum = new JComboBox<>(new Integer[]{1, 2, 3, 4});
+    JComboBox comboAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery"});
 
     private int pidActualVisual = 1;
     private final Map<Integer, Color> coloresPID      = new HashMap<>();
@@ -263,6 +266,15 @@ public class SimuladorGUI extends JFrame {
         JLabel lblCpus = new JLabel("Núcleos:");
         lblCpus.setForeground(Color.WHITE);
         lblCpus.setFont(new Font("SansSerif", Font.BOLD, 12));
+        JLabel lblQuantum = new JLabel("Quantum (Para algoritmos que apliquen):");
+        lblQuantum.setForeground(Color.WHITE);
+        lblQuantum.setFont(new Font("SansSerif", Font.BOLD, 12));
+        
+        
+        comboQuantum.setBackground(new Color(60, 60, 60));
+        comboQuantum.setForeground(Color.WHITE);
+        comboQuantum.setMaximumSize(new Dimension(60, 28));
+        comboQuantum.setFont(new Font("SansSerif", Font.BOLD, 12));
 
         comboCpus = new JComboBox<>(new Integer[]{1, 2, 3, 4});
         comboCpus.setSelectedItem(cantidadCpusActiva);        // Defecto: viene del JSON
@@ -278,7 +290,7 @@ public class SimuladorGUI extends JFrame {
         lblAlgoritmo.setForeground(Color.WHITE);
         lblAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        JComboBox comboAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery"});
+        
         comboAlgoritmo.setBackground(new Color(60, 60, 60));
         comboAlgoritmo.setForeground(Color.WHITE);
         comboAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -286,7 +298,10 @@ public class SimuladorGUI extends JFrame {
 
         // Acción opcional: imprimir en terminal cuando cambia el algoritmo
         comboAlgoritmo.addActionListener(e ->
-            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem())
+            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(), (int) comboQuantum.getSelectedItem())
+        );
+        comboQuantum.addActionListener(e ->
+            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(), (int) comboQuantum.getSelectedItem())
         );
 
         btnCargar.addActionListener(e -> menuCargarArchivo());
@@ -305,23 +320,27 @@ public class SimuladorGUI extends JFrame {
         panel.add(Box.createHorizontalStrut(16));
         panel.add(lblAlgoritmo);
         panel.add(comboAlgoritmo);
+        panel.add(lblQuantum);
+        panel.add(comboQuantum);
        // panel.add(btnLimpiar);
 
         return panel;
     }
-    private void setearAlgoritmo(String algoritmo){
+    private void setearAlgoritmo(String algoritmo, int quantum){
         switch(algoritmo){
             case "FCFS":
-                this.kernel.colocarEstrategia(new PlanificadorFCFS());
+                this.kernel.colocarEstrategia(new PlanificadorFCFS(),new PlanificadorFCFS());
                 break;
             case "HRRN":
-                this.kernel.colocarEstrategia(new PlanificadorHRRN());
+                this.kernel.colocarEstrategia(new PlanificadorHRRN(),new PlanificadorHRRN());
                 break;
             case "SJF":
-                this.kernel.colocarEstrategia(new PlanificadorSJF());
+                this.kernel.colocarEstrategia(new PlanificadorSJF(),new PlanificadorSJF());
                 break;
+            case "RR":
+                this.kernel.colocarEstrategia(new PlanificadorRoundRobin(quantum), new PlanificadorRoundRobin(quantum));
             default:
-                this.kernel.colocarEstrategia(new PlanificadorFCFS());
+                this.kernel.colocarEstrategia(new PlanificadorFCFS(), new PlanificadorFCFS());
                 break;
         }
     }

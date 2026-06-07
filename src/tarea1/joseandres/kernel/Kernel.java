@@ -6,6 +6,7 @@ import java.util.Queue;
 import tarea1.joseandres.memoria.Memoria;
 import tarea1.joseandres.disco.Disco;
 import tarea1.joseandres.administrador.Scheduler;
+import tarea1.joseandres.estrategia.AlgoritmoPlanificador;
 import tarea1.joseandres.proceso.BCP;
 import tarea1.joseandres.loader.Loader;
 import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
@@ -70,8 +71,11 @@ public class Kernel {
             System.out.println("KERNEL: Gestión No Contigua por Paginación Pura (Bitmap) Activa.");
         }
     }
-    public void colocarEstrategia(EstrategiaPlanificacion estrategia){
-        this.scheduler.setEstrategia(estrategia);
+    public void colocarEstrategia(EstrategiaPlanificacion estrategia, AlgoritmoPlanificador algoritmo){
+        this.scheduler.setEstrategia(estrategia, algoritmo);
+    }
+    public AlgoritmoPlanificador getEstrategia(){
+        return this.scheduler.getEstrategia();
     }
 
     private boolean asignarMemoriaGestor(BCP proceso) {
@@ -326,4 +330,5 @@ public class Kernel {
     public tarea1.joseandres.memoria.MemoriaPaginada getMemoriaPaginada() {
         return this.memoriaPaginada;
     }
+    
 }

@@ -7,6 +7,7 @@ import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import tarea1.joseandres.proceso.BCP;
 import java.util.ArrayList;
 import java.util.List;
+import tarea1.joseandres.estrategia.AlgoritmoPlanificador;
 /**
  *
  * @author joses
@@ -15,13 +16,15 @@ import java.util.List;
 public class Scheduler {
     private List<BCP> readyQueue;
     private EstrategiaPlanificacion estrategia;
+    private AlgoritmoPlanificador algoritmo;
     
     public Scheduler() {
         this.readyQueue = new ArrayList<>();
     }
     
-    public void setEstrategia(EstrategiaPlanificacion estrategia) {
+    public void setEstrategia(EstrategiaPlanificacion estrategia, AlgoritmoPlanificador algoritmo) {
         this.estrategia = estrategia;
+        this.algoritmo = algoritmo;
     }
 
     public synchronized void agregarProceso(BCP proceso) {
@@ -46,4 +49,9 @@ public class Scheduler {
     public List<BCP> getReadyQueue() {
         return readyQueue;
     }
+
+    public AlgoritmoPlanificador getEstrategia() {
+        return this.algoritmo;
+    }
+    
 }

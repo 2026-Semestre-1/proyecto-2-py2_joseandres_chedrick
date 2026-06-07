@@ -7,19 +7,24 @@ import tarea1.joseandres.proceso.BCP;
 import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import java.util.List;
 import java.util.Comparator;
+import tarea1.joseandres.estrategia.AlgoritmoPlanificador;
 /**
  *
  * @author joses
  * Algoritmo 1 -> El FCFS primer algoritmo y el unico a utilizarse para este py
  * Elegimos la que lleve mas tiempo esperando solo con los tiemposLLegada
  */
-public class PlanificadorFCFS implements EstrategiaPlanificacion {
+public class PlanificadorFCFS extends AlgoritmoPlanificador implements EstrategiaPlanificacion {
+ 
+    public PlanificadorFCFS() {
+        this.esApropiativo = false;
+        this.quantum = 0; // no usa quantum
+    }
+ 
+    @Override
     public BCP seleccionarSiguiente(List<BCP> listos) {
         if (listos == null || listos.isEmpty()) return null;
-
-        // Ordenamos por tiempo de llegada por si entraron varios a la vez
-        return listos.stream()
-                     .min(Comparator.comparingLong(p -> p.tiempoLlegada))
-                     .orElse(null);
+        // El primero en llegar es el primero en ser atendido
+        return listos.get(0);
     }
 }

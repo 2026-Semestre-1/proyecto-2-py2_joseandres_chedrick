@@ -40,6 +40,8 @@ public class Cpu implements Runnable {
     private Kernel kernel;
     private Component uiParent;
     private boolean saltoRealizado = false;
+    private int cantidadRestante;
+    private int quantumActivo;
     
     private tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada;
 
@@ -470,7 +472,11 @@ public class Cpu implements Runnable {
             }
         }
     }
-
+//AQUI ES DONDE DEBO IMPLEMENTAR LOS ALGORITMOS EXPROPIATIVOS.
+    
+    
+    
+    
     public boolean ejecutarSiguientePaso() {
         if (procesoActual == null) {
             procesoActual = kernel.solicitarSiguienteProceso();

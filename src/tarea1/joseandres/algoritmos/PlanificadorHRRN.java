@@ -5,6 +5,7 @@
 package tarea1.joseandres.algoritmos;
 //<>
 import java.util.List;
+import tarea1.joseandres.estrategia.AlgoritmoPlanificador;
 import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import tarea1.joseandres.proceso.BCP;
 //hr
@@ -12,19 +13,32 @@ import tarea1.joseandres.proceso.BCP;
  *
  * @author chedr
  */
-public class PlanificadorHRRN implements EstrategiaPlanificacion {
+public class PlanificadorHRRN extends AlgoritmoPlanificador implements EstrategiaPlanificacion {
+ 
+    public PlanificadorHRRN() {
+        this.esApropiativo = false;
+        this.quantum = 0;
+    }
+ 
     @Override
     public BCP seleccionarSiguiente(List<BCP> listos) {
-        int rr = -200;
-        BCP procesoSiguiente = null;
-        for(BCP proceso : listos){
-            long tiempoEspera = (System.currentTimeMillis() - proceso.tiempoLlegada);
-            int rrActual = (int) ((tiempoEspera + proceso.alcance) / proceso.alcance);
-            if (rr < rrActual){
-                rr = rrActual;
-                procesoSiguiente = proceso;
+        if (listos == null || listos.isEmpty()) return null;
+ 
+        long ahora = System.currentTimeMillis();
+        BCP mejor = null;
+        double mejorRatio = -1;
+ 
+        for (BCP bcp : listos) {
+            if (bcp.rafagaTotal <= 0) continue;
+ 
+            double espera = (double)(ahora - bcp.tiempoLlegada) / 1000.0;
+            double ratio  = (espera + bcp.rafagaTotal) / (double) bcp.rafagaTotal;
+ 
+            if (ratio > mejorRatio) {
+                mejorRatio = ratio;
+                mejor = bcp;
             }
         }
-        return procesoSiguiente;
+        return mejor;
     }
 }
