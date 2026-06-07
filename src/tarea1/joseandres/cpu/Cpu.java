@@ -475,8 +475,6 @@ public class Cpu implements Runnable {
 //AQUI ES DONDE DEBO IMPLEMENTAR LOS ALGORITMOS EXPROPIATIVOS.
     
     
-    
-    
     public boolean ejecutarSiguientePaso() {
         if (procesoActual == null) {
             procesoActual = kernel.solicitarSiguienteProceso();
@@ -597,13 +595,28 @@ public class Cpu implements Runnable {
         }
 
         dispatcher.actualizarBcpEnKernel(procesoActual);
-
-        if (esApropiativo
-                && procesoActual.rafagaEjecutada >= quantumMaximo
+/**
+        if (this.kernel.getScheduler().getEstrategia().esApropiativo
+                && procesoActual.rafagaEjecutada >= this.kernel.getScheduler().getEstrategia().quantum
                 && procesoActual.rafagaRestante > 0) {
             procesoActual.rafagaEjecutada = 0;
             kernel.devolverAColaListos(procesoActual);
             procesoActual = null;
+        }
+        
+         **/
+         
+        if (this.kernel.getScheduler().getEstrategia().esApropiativo){
+            if(procesoActual.rafagaEjecutada >= this.kernel.getScheduler().getEstrategia().quantum){
+                procesoActual.rafagaEjecutada = 0;
+                if(procesoActual.rafagaRestante > 0){
+                    kernel.devolverAColaListos(procesoActual);
+                    procesoActual = null;
+                }
+            }else{
+                procesoActual.rafagaEjecutada++;
+                procesoActual.rafagaRestante--;
+            }
         }
 
         return true;
@@ -621,5 +634,8 @@ public class Cpu implements Runnable {
             Errors.mostrarErrorVisual(uiParent, "Error de ejecución", mensaje);
         }
         return false;
+    }
+    public void setearQuantumMaximo(int q){
+        this.quantumMaximo = q;
     }
 }

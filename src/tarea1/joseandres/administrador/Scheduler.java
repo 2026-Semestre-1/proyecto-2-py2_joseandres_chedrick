@@ -17,41 +17,38 @@ public class Scheduler {
     private List<BCP> readyQueue;
     private EstrategiaPlanificacion estrategia;
     private AlgoritmoPlanificador algoritmo;
-    
+ 
     public Scheduler() {
         this.readyQueue = new ArrayList<>();
     }
-    
+ 
     public void setEstrategia(EstrategiaPlanificacion estrategia, AlgoritmoPlanificador algoritmo) {
         this.estrategia = estrategia;
-        this.algoritmo = algoritmo;
+        this.algoritmo  = algoritmo;
     }
-
+ 
     public synchronized void agregarProceso(BCP proceso) {
         proceso.estado = "PREPARADO";
         this.readyQueue.add(proceso);
     }
-
+ 
     public synchronized BCP obtenerSiguiente() {
         if (estrategia == null) {
             System.err.println("Error: No se ha configurado una estrategia de planificación.");
             return null;
         }
-
+ 
         BCP seleccionado = estrategia.seleccionarSiguiente(readyQueue);
-
-        if (seleccionado != null) {
+ 
+        // Los algoritmos apropiativos (RR, SRR) gestionan la cola internamente.
+        // Los no apropiativos necesitan que el Scheduler remueva el proceso.
+        if (seleccionado != null && !algoritmo.esApropiativo) {
             readyQueue.remove(seleccionado);
         }
+ 
         return seleccionado;
     }
-
-    public List<BCP> getReadyQueue() {
-        return readyQueue;
-    }
-
-    public AlgoritmoPlanificador getEstrategia() {
-        return this.algoritmo;
-    }
-    
+ 
+    public List<BCP> getReadyQueue() { return readyQueue; }
+    public AlgoritmoPlanificador getEstrategia() { return this.algoritmo; }
 }
