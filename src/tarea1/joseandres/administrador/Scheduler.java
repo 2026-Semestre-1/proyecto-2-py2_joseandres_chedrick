@@ -39,7 +39,7 @@ public class Scheduler {
         }
  
         BCP seleccionado = estrategia.seleccionarSiguiente(readyQueue);
-            this.readyQueue.remove(seleccionado);
+        this.readyQueue.remove(seleccionado);
         
         // Los algoritmos apropiativos (RR, SRR) gestionan la cola internamente.
         // Los no apropiativos necesitan que el Scheduler remueva el proceso.

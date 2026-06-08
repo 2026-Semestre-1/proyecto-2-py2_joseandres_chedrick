@@ -7,6 +7,7 @@ package tarea1.joseandres.cpu;
 import java.awt.Component;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.JFrame;
 import tarea1.joseandres.kernel.Kernel;
 import tarea1.joseandres.memoria.Memoria;
 import tarea1.joseandres.proceso.BCP;
@@ -60,12 +61,13 @@ public class Cpu implements Runnable {
     private int quantumMaximo = 5;
 
 
-    public Cpu(int cpuId, Kernel kernel, Memoria memoria, Dispatcher dispatcher, Disco disco, tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada) {
+    public Cpu(int cpuId, Kernel kernel, Memoria memoria, Dispatcher dispatcher, Disco disco, tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada, JFrame uiParent) {
         this.cpuId = cpuId;
         this.kernel = kernel;
         this.memoria = memoria;
         this.dispatcher = dispatcher;
         this.disco = disco;
+        this.uiParent = uiParent;
      
         this.memoriaPaginada = memoriaPaginada; 
         this.corriendo = false;
@@ -486,6 +488,9 @@ public class Cpu implements Runnable {
         }
 
         if (procesoActual.estado.equals("TERMINADO") || procesoActual.estado.equals("ERROR")) {
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
             procesoActual = kernel.solicitarSiguienteProceso();
             if (procesoActual == null) return false;
             dispatcher.despachar(procesoActual, this.cpuId);
@@ -510,6 +515,9 @@ public class Cpu implements Runnable {
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
             procesoActual.IR = "END";
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
 
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
@@ -549,6 +557,9 @@ public class Cpu implements Runnable {
                 || instruccionCompleta.equals("00000")) {
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
 

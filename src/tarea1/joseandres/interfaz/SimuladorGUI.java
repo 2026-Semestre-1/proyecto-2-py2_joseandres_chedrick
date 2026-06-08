@@ -59,6 +59,7 @@ public class SimuladorGUI extends JFrame {
     private String tipoMemoriaConfig;
     private int    cantParticionesConfig;
     private int[]  tamanosParticionesConfig;
+    private long momentoInicial;
 
     // Paginación
     private int tamanoPagina = 0;
@@ -70,8 +71,10 @@ public class SimuladorGUI extends JFrame {
     private CronometroThread cronometro;
     private ObservadorCargaThread observador;
     private List<Object[]> configuracionProcesos = new ArrayList<>();
+    private List<BCP> BCPFinalizados = new ArrayList<>();
     JComboBox comboQuantum = new JComboBox<>(new Integer[]{1, 2, 3, 4});
     JComboBox comboAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery"});
+    JButton botonFinalizarYVerEstadisticas = new JButton();
 
     private int pidActualVisual = 1;
     private final Map<Integer, Color> coloresPID      = new HashMap<>();
@@ -270,6 +273,9 @@ public class SimuladorGUI extends JFrame {
         lblQuantum.setForeground(Color.WHITE);
         lblQuantum.setFont(new Font("SansSerif", Font.BOLD, 12));
         
+        botonFinalizarYVerEstadisticas.setText("Ver estadísticas");
+        estilizarBotonSimple(botonFinalizarYVerEstadisticas);
+        
         
         comboQuantum.setBackground(new Color(60, 60, 60));
         comboQuantum.setForeground(Color.WHITE);
@@ -303,6 +309,9 @@ public class SimuladorGUI extends JFrame {
         comboQuantum.addActionListener(e ->
             this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(), (int) comboQuantum.getSelectedItem())
         );
+        this.botonFinalizarYVerEstadisticas.addActionListener(e ->
+            VentanaEstadisticas.mostrar(this, BCPFinalizados, momentoInicial)
+        );
 
         btnCargar.addActionListener(e -> menuCargarArchivo());
        // btnPaso.addActionListener(e -> ejecutarPasoAPaso());
@@ -322,10 +331,18 @@ public class SimuladorGUI extends JFrame {
         panel.add(comboAlgoritmo);
         panel.add(lblQuantum);
         panel.add(comboQuantum);
+        panel.add(botonFinalizarYVerEstadisticas);
        // panel.add(btnLimpiar);
 
         return panel;
     }
+    private void MostrarEstadísticas(List<BCP> BCPFinalizados){
+        for (BCP proceso : BCPFinalizados){
+            proceso.construirDatosEstadísticos(momentoInicial);
+        }
+        
+    }
+    
     private void setearAlgoritmo(String algoritmo, int quantum){
         switch(algoritmo){
             case "FCFS":
@@ -761,6 +778,7 @@ public class SimuladorGUI extends JFrame {
      * Se puede llamar desde el botón "🚀 Iniciar CPUs".
      */
     private void iniciarCpusEnHilos() {
+        this.momentoInicial = System.currentTimeMillis();
         if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
         for (Cpu c : cpus)        c.setCorriendo(false);
         for (Thread t : hilosCpu) t.interrupt();
@@ -775,7 +793,7 @@ public class SimuladorGUI extends JFrame {
             tarea1.joseandres.memoria.MemoriaPaginada mpCpu = null;
             try { mpCpu = this.kernel.getMemoriaPaginada(); } catch (Exception _ignored) {}
 
-            Cpu nuevaCpu = new Cpu(i, this.kernel, this.memoria, this.dispatcher, this.disco, mpCpu);
+            Cpu nuevaCpu = new Cpu(i, this.kernel, this.memoria, this.dispatcher, this.disco, mpCpu, this);
             nuevaCpu.setDelayReloj(1200);
             nuevaCpu.setCorriendo(true);
 
@@ -923,7 +941,7 @@ public class SimuladorGUI extends JFrame {
             // Compatibilidad: crear CPU 0 on-demand en modo paso a paso
             tarea1.joseandres.memoria.MemoriaPaginada mp0 = null;
             try { mp0 = kernel.getMemoriaPaginada(); } catch (Exception _ig) {}
-            Cpu cpu0 = new Cpu(0, kernel, memoria, dispatcher, disco, mp0);
+            Cpu cpu0 = new Cpu(0, kernel, memoria, dispatcher, disco, mp0, this);
             cpus.add(cpu0);
         }
 
@@ -1423,4 +1441,8 @@ public class SimuladorGUI extends JFrame {
             return c;
         }
     }
+    public void agregarProcesoListaFinalizados(BCP proceso){
+        this.BCPFinalizados.add(proceso);
+    }
+    
 }

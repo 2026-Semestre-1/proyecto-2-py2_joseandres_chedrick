@@ -57,9 +57,9 @@ public class Dispatcher {
         ram.escribirEnKernel(offset + 7, "BX:" + p.BX);
         ram.escribirEnKernel(offset + 8, "CX:" + p.CX);
         ram.escribirEnKernel(offset + 9, "DX:" + p.DX);
-//        ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
-//        ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
-//        ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
-//        ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
+        ram.escribirEnKernel(offset + 10, "TI:" + p.tiempoInicio);
+        ram.escribirEnKernel(offset + 11, "TF:" + p.tiempoFinal);
+        ram.escribirEnKernel(offset + 12, "TE:" + duracion + "s");
+        ram.escribirEnKernel(offset + 13, "CICLOS:" + p.ciclosConsumidos);
     }
 }
