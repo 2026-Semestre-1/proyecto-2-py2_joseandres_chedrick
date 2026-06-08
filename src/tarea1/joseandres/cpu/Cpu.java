@@ -7,6 +7,7 @@ package tarea1.joseandres.cpu;
 import java.awt.Component;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.JFrame;
 import tarea1.joseandres.kernel.Kernel;
 import tarea1.joseandres.memoria.Memoria;
 import tarea1.joseandres.proceso.BCP;
@@ -40,6 +41,8 @@ public class Cpu implements Runnable {
     private Kernel kernel;
     private Component uiParent;
     private boolean saltoRealizado = false;
+    private int cantidadRestante;
+    private int quantumActivo;
     
     private tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada;
 
@@ -58,12 +61,13 @@ public class Cpu implements Runnable {
     private int quantumMaximo = 5;
 
 
-    public Cpu(int cpuId, Kernel kernel, Memoria memoria, Dispatcher dispatcher, Disco disco, tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada) {
+    public Cpu(int cpuId, Kernel kernel, Memoria memoria, Dispatcher dispatcher, Disco disco, tarea1.joseandres.memoria.MemoriaPaginada memoriaPaginada, JFrame uiParent) {
         this.cpuId = cpuId;
         this.kernel = kernel;
         this.memoria = memoria;
         this.dispatcher = dispatcher;
         this.disco = disco;
+        this.uiParent = uiParent;
      
         this.memoriaPaginada = memoriaPaginada; 
         this.corriendo = false;
@@ -470,7 +474,9 @@ public class Cpu implements Runnable {
             }
         }
     }
-
+//AQUI ES DONDE DEBO IMPLEMENTAR LOS ALGORITMOS EXPROPIATIVOS.
+    
+    
     public boolean ejecutarSiguientePaso() {
         if (procesoActual == null) {
             procesoActual = kernel.solicitarSiguienteProceso();
@@ -482,6 +488,9 @@ public class Cpu implements Runnable {
         }
 
         if (procesoActual.estado.equals("TERMINADO") || procesoActual.estado.equals("ERROR")) {
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
             procesoActual = kernel.solicitarSiguienteProceso();
             if (procesoActual == null) return false;
             dispatcher.despachar(procesoActual, this.cpuId);
@@ -506,6 +515,9 @@ public class Cpu implements Runnable {
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
             procesoActual.IR = "END";
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
 
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
@@ -545,6 +557,9 @@ public class Cpu implements Runnable {
                 || instruccionCompleta.equals("00000")) {
             procesoActual.estado = "TERMINADO";
             procesoActual.tiempoFinal = System.currentTimeMillis();
+            SimuladorGUI gui = (SimuladorGUI)this.uiParent;
+            procesoActual.tiempoFinal = System.currentTimeMillis();
+            gui.agregarProcesoListaFinalizados(procesoActual);
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
 
@@ -574,8 +589,8 @@ public class Cpu implements Runnable {
             if (!esperandoEntradaInt09) {
                 int peso = obtenerPesoInstruccion(partes);
                 procesoActual.ciclosConsumidos += peso;
-                procesoActual.rafagaEjecutada++;
-                procesoActual.rafagaRestante--;
+                //procesoActual.rafagaEjecutada++;
+                //procesoActual.rafagaRestante--;
             }
         } catch (Exception e) {
             return marcarErrorProceso("Error en ejecución: " + e.getMessage());
@@ -591,13 +606,31 @@ public class Cpu implements Runnable {
         }
 
         dispatcher.actualizarBcpEnKernel(procesoActual);
-
-        if (esApropiativo
-                && procesoActual.rafagaEjecutada >= quantumMaximo
+/**
+        if (this.kernel.getScheduler().getEstrategia().esApropiativo
+                && procesoActual.rafagaEjecutada >= this.kernel.getScheduler().getEstrategia().quantum
                 && procesoActual.rafagaRestante > 0) {
             procesoActual.rafagaEjecutada = 0;
             kernel.devolverAColaListos(procesoActual);
             procesoActual = null;
+        }
+        
+         **/
+         
+        if (this.kernel.getScheduler().getEstrategia().esApropiativo){
+            if(procesoActual.rafagaEjecutada >= this.kernel.getScheduler().getEstrategia().quantum){
+                procesoActual.rafagaEjecutada = 0;
+                if(procesoActual.rafagaRestante > 0){
+                    kernel.devolverAColaListos(procesoActual);
+                    procesoActual = null;
+                }
+            }else{
+                procesoActual.rafagaEjecutada++;
+                procesoActual.rafagaRestante--;
+            }
+        }
+        if (procesoActual != null){
+            dispatcher.actualizarBcpEnKernel(procesoActual);
         }
 
         return true;
@@ -615,5 +648,8 @@ public class Cpu implements Runnable {
             Errors.mostrarErrorVisual(uiParent, "Error de ejecución", mensaje);
         }
         return false;
+    }
+    public void setearQuantumMaximo(int q){
+        this.quantumMaximo = q;
     }
 }

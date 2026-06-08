@@ -5,6 +5,7 @@
 package tarea1.joseandres.algoritmos;
 //<>
 import java.util.List;
+import tarea1.joseandres.estrategia.AlgoritmoPlanificador;
 import tarea1.joseandres.estrategia.EstrategiaPlanificacion;
 import tarea1.joseandres.proceso.BCP;
 //<>
@@ -12,37 +13,34 @@ import tarea1.joseandres.proceso.BCP;
  *
  * @author chedr
  */
-public class PlanificadorRoundRobin implements EstrategiaPlanificacion {
-    int quantum;
-
+public class PlanificadorRoundRobin extends AlgoritmoPlanificador implements EstrategiaPlanificacion {
+ 
+    public PlanificadorRoundRobin(int quantum) {
+        this.esApropiativo = true;
+        this.quantum = quantum;
+    }
+ 
     @Override
     public BCP seleccionarSiguiente(List<BCP> listos) {
-        BCP elemento = null;
-        try{
-            if (listos.get(0).ciclosConsumidos < listos.get(0).alcance){
-                listos.get(0).ciclosConsumidos = listos.get(0).ciclosConsumidos + this.quantum;
-                elemento = listos.get(0);
-                this.reestructurarLista(listos);
-            }else{
-                listos.remove(0);
-                this.seleccionarSiguiente(listos);
+        if (listos == null || listos.isEmpty()) return null;
+ 
+        // Buscar el primero que todavía tenga instrucciones
+        while (!listos.isEmpty()) {
+            BCP candidato = listos.get(0);
+            if (candidato.rafagaRestante > 0) {
+                candidato.ciclosConsumidos += this.quantum;
+                reestructurarLista(listos); // va al final de la cola
+                return candidato;
+            } else {
+                listos.remove(0); // ya terminó, sacarlo
             }
-        }catch(NullPointerException e){
-            System.out.println("No hay elementos que obtener");
-        }finally{
-            return elemento;
         }
-        
+        return null;
     }
-    private List<BCP> reestructurarLista(List<BCP> listos) {
-        if (listos == null || listos.size() <= 1) {
-            return listos;
-        }
-
-        BCP primerElemento = listos.get(0);
-        listos.remove(0);
-        listos.add(primerElemento);
-
-        return listos;
+ 
+    private void reestructurarLista(List<BCP> listos) {
+        if (listos == null || listos.size() <= 1) return;
+        BCP primero = listos.remove(0);
+        listos.add(primero);
     }
 }
