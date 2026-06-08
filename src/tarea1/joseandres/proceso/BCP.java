@@ -132,6 +132,43 @@ public class BCP {
     public void setTablaPaginas(tarea1.joseandres.memoria.TablaPaginas tabla) {
         this.tablaPaginas = tabla;
     }
+    public EstadisticasProceso construirDatosEstadísticos(long momentoInicial) {
+       
+        long tLlegada = (tiempoLlegada - momentoInicial) / 1000;
+        long tInicio  = (tiempoInicio  - momentoInicial) / 1000;
+        long tFinal   = (tiempoFinal   - momentoInicial) / 1000;
+
+        long   tr    = tInicio - tLlegada;
+        long   ts    = tFinal  - tLlegada;
+        double ratio = (ts > 0) ? (double) tr / ts : 0.0;
+
+        StringBuilder stackView = new StringBuilder("[");
+        for (int i = 0; i < pila.length; i++) {
+            stackView.append(pila[i]);
+            if (i < pila.length - 1) stackView.append(", ");
+        }
+        stackView.append("]");
+
+        System.out.println("---------------------------------------------------------------------------------------");
+        System.out.println(String.format("PROCESO: %-15s | ID: %d | ESTADO: %s", nombreProceso, id, estado));
+        System.out.println(String.format("REGISTROS -> PC: %03d | IR: %-10s | AC: %d", PC, IR, AC));
+        System.out.println(String.format("GENERALES -> AX: %d | BX: %d | CX: %d | DX: %d", AX, BX, CX, DX));
+        System.out.println(String.format("STACK (SP: %d) -> %s", SP, stackView.toString()));
+        System.out.println(String.format("MEMORIA   -> Base: %d | Alcance: %d", direccionBase, alcance));
+        System.out.println(String.format("TIEMPOS   -> Llegada: %ds | Inicio: %ds | Final: %ds", tLlegada, tInicio, tFinal));
+        System.out.println(String.format("MÉTRICAS  -> Tr: %ds | Ts: %ds | Tr/Ts: %.3f", tr, ts, ratio));
+        System.out.println("---------------------------------------------------------------------------------------");
+
+        return new EstadisticasProceso(
+                nombreProceso, id, estado,
+                PC, IR, AC,
+                AX, BX, CX, DX,
+                SP, stackView.toString(),
+                direccionBase, alcance,
+                tLlegada, tInicio, tFinal,
+                tr, ts, ratio
+        );
+    }
 
     public void mostrarRegistros() {
         StringBuilder stackView = new StringBuilder("[");
@@ -149,6 +186,7 @@ public class BCP {
         System.out.println(String.format("GENERALES -> AX: %d | BX: %d | CX: %d | DX: %d", AX, BX, CX, DX));
         System.out.println(String.format("STACK (SP: %d) -> %s", SP, stackView.toString()));
         System.out.println(String.format("MEMORIA   -> Base: %d | Alcance: %d", direccionBase, alcance));
+        System.out.println(String.format("TIEMPOS   -> INICIO: %d | FINAL: %d", this.tiempoInicio, this.tiempoFinal));
         System.out.println("---------------------------------------------------------------------------------------");
     }
 }
