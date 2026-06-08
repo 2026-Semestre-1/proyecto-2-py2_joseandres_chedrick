@@ -71,7 +71,8 @@ public class Tarea1JoseAndres {
             tipoMemoria,
             cantidadParticiones,
             arregloTamanos,
-            tamanoPagina 
+            tamanoPagina,
+            cantidadCpus
         );
 
         // Pasamos cantidadCpus a la GUI para que preseleccione el ComboBox
