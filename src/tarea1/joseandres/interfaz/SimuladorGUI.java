@@ -60,7 +60,6 @@ public class SimuladorGUI extends JFrame {
     private int    cantParticionesConfig;
     private int[]  tamanosParticionesConfig;
     private long momentoInicial;
-    private int cantidadCpus;
 
     // Paginación
     private int tamanoPagina = 0;
@@ -778,7 +777,7 @@ public class SimuladorGUI extends JFrame {
      * Instancia y arranca en hilos independientes la cantidad de CPUs elegida.
      * Se puede llamar desde el botón "🚀 Iniciar CPUs".
      */
-   private void iniciarCpusEnHilos() {
+    private void iniciarCpusEnHilos() {
         this.momentoInicial = System.currentTimeMillis();
         if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
         for (Cpu c : cpus)        c.setCorriendo(false);
@@ -789,11 +788,6 @@ public class SimuladorGUI extends JFrame {
         int cpusAInterpretar = (Integer) comboCpus.getSelectedItem();
         cpus.clear();
         hilosCpu.clear();
-
-       
-        if (this.kernel != null) {
-            this.kernel.setCantidadCpus(cpusAInterpretar);
-        }
 
         for (int i = 0; i < cpusAInterpretar; i++) {
             tarea1.joseandres.memoria.MemoriaPaginada mpCpu = null;
@@ -823,9 +817,6 @@ public class SimuladorGUI extends JFrame {
             cpus.add(nuevaCpu);
         }
 
-        // =========================================================================
-        // 2. Configurar estrategia de planificación con las colas ya redimensionadas
-        // =========================================================================
         configurarAlgoritmo();
 
         for (int i = 0; i < cpus.size(); i++) {
@@ -1197,7 +1188,7 @@ public class SimuladorGUI extends JFrame {
                     tamanoRamConfig, tamanoDiscoConfig,
                     porcentajeKernelConfig, porcentajeIndiceDiscoConfig,
                     tipoMemoriaConfig, cantParticionesConfig, tamanosParticionesConfig,
-                    tamanoPagina, cantidadCpus);
+                    tamanoPagina);
             SimuladorGUI nueva = new SimuladorGUI(nuevoKernel, cantidadCpusActiva);
             nueva.setLocationRelativeTo(null);
             nueva.setVisible(true);

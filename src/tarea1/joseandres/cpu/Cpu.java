@@ -453,42 +453,33 @@ public class Cpu implements Runnable {
         System.out.println("CPU " + cpuId + ": Hilo encendido y listo.");
 
         while (corriendo) {
-        try {
-            // 1. Ejecutamos el paso de inmediato
-            boolean ejecuto = ejecutarSiguientePaso();
-
-            // 2. Notificamos a la interfaz gráfica de forma segura en el EDT
-            if (pasoCallback != null) {
-                final BCP bcpSnapshot = procesoActual;
-                final int idSnapshot  = cpuId;
-                javax.swing.SwingUtilities.invokeLater(
-                    () -> pasoCallback.onPasoEjecutado(idSnapshot, bcpSnapshot)
-                );
-            }
-
-            // 3. Manejo eficiente de los tiempos de espera (Delays)
-            if (ejecuto) {
-                // Si la CPU ejecutó una instrucción, espera el tiempo del ciclo de reloj configurado
+            try {
                 Thread.sleep(delayReloj);
-            } else {
-                // Si NO ejecutó nada (porque el Kernel no devolvió procesos y la CPU quedó ociosa),
-                // duerme un tiempo muy corto (ej. 100ms) para no saturar el procesador real de la computadora,
-                // pero permitiendo reaccionar de forma inmediata apenas se cargue un proceso en la interfaz.
-                Thread.sleep(100);
-            }
+                boolean ejecuto = ejecutarSiguientePaso();
 
-        } catch (InterruptedException e) {
-            System.out.println("CPU " + cpuId + " detenida.");
-            this.corriendo = false;
+                if (pasoCallback != null) {
+                    final BCP bcpSnapshot = procesoActual;
+                    final int idSnapshot  = cpuId;
+                    javax.swing.SwingUtilities.invokeLater(
+                        () -> pasoCallback.onPasoEjecutado(idSnapshot, bcpSnapshot)
+                    );
+                }
+
+                if (!ejecuto && procesoActual == null) {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                System.out.println("CPU " + cpuId + " detenida.");
+                this.corriendo = false;
+            }
         }
     }
-}
 //AQUI ES DONDE DEBO IMPLEMENTAR LOS ALGORITMOS EXPROPIATIVOS.
     
     
     public boolean ejecutarSiguientePaso() {
         if (procesoActual == null) {
-            procesoActual = kernel.solicitarSiguienteProceso(this.cpuId);
+            procesoActual = kernel.solicitarSiguienteProceso();
             if (procesoActual == null) {
                 System.out.println("CPU " + cpuId + ": No hay procesos pendientes.");
                 return false;
@@ -500,7 +491,7 @@ public class Cpu implements Runnable {
             SimuladorGUI gui = (SimuladorGUI)this.uiParent;
             procesoActual.tiempoFinal = System.currentTimeMillis();
             gui.agregarProcesoListaFinalizados(procesoActual);
-            procesoActual = kernel.solicitarSiguienteProceso(this.cpuId);
+            procesoActual = kernel.solicitarSiguienteProceso();
             if (procesoActual == null) return false;
             dispatcher.despachar(procesoActual, this.cpuId);
         }
@@ -531,7 +522,7 @@ public class Cpu implements Runnable {
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
 
-            BCP siguiente = kernel.solicitarSiguienteProceso(this.cpuId);
+            BCP siguiente = kernel.solicitarSiguienteProceso();
             if (siguiente != null) {
                 procesoActual = siguiente;
                 dispatcher.despachar(procesoActual, this.cpuId);
@@ -572,7 +563,7 @@ public class Cpu implements Runnable {
             dispatcher.actualizarBcpEnKernel(procesoActual);
             kernel.finalizarProceso(procesoActual);
 
-            BCP siguiente = kernel.solicitarSiguienteProceso(this.cpuId);
+            BCP siguiente = kernel.solicitarSiguienteProceso();
             if (siguiente != null) {
                 procesoActual = siguiente;
                 dispatcher.despachar(procesoActual, this.cpuId);
