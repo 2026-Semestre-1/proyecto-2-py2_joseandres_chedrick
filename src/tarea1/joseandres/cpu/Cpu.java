@@ -349,7 +349,7 @@ public class Cpu implements Runnable {
         @Override
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
             if (operandos.length < 2) throw new IllegalArgumentException("JMP requiere dirección/desplazamiento.");
-            bcp.PC = parseValor(operandos[1]);
+            bcp.PC += parseValor(operandos[1]);
             saltoRealizado = true;
             System.out.println("JMP ejecutado: PC forzado a " + bcp.PC);
         }
@@ -360,7 +360,7 @@ public class Cpu implements Runnable {
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
             if (operandos.length < 2) throw new IllegalArgumentException("JE requiere dirección.");
             if (bcp.flagIgual) {
-                bcp.PC = parseValor(operandos[1]);
+                bcp.PC += parseValor(operandos[1]);
                 saltoRealizado = true;
                 System.out.println("JE ejecutado: Salto tomado a PC " + bcp.PC);
             } else {
@@ -374,7 +374,7 @@ public class Cpu implements Runnable {
         public void ejecutar(String[] operandos, BCP bcp, Memoria memoria) {
             if (operandos.length < 2) throw new IllegalArgumentException("JNE requiere dirección.");
             if (!bcp.flagIgual) {
-                bcp.PC = parseValor(operandos[1]);
+                bcp.PC += parseValor(operandos[1]);
                 saltoRealizado = true;
                 System.out.println("JNE ejecutado: Salto tomado a PC " + bcp.PC);
             } else {
