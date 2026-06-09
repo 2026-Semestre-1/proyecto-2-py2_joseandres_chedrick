@@ -42,23 +42,24 @@ public class SimuladorGUI extends JFrame {
     private Dispatcher dispatcher;
 
     // --- MULTIHILO: lista de CPUs activas y sus hilos ---
-    private final List<Cpu>    cpus    = new ArrayList<>();
+    private final List<Cpu> cpus = new ArrayList<>();
     private final List<Thread> hilosCpu = new ArrayList<>();
 
-    // Cantidad de CPUs que el usuario seleccionó en el ComboBox (se inicializa desde el JSON)
+    // Cantidad de CPUs que el usuario seleccionó en el ComboBox (se inicializa
+    // desde el JSON)
     private int cantidadCpusActiva = 2;
 
     private BCP bcpActual;
     private Timer timerSimulacion;
 
     // --- Config persistida para el Reset ---
-    private int    tamanoRamConfig;
-    private int    porcentajeKernelConfig;
-    private int    tamanoDiscoConfig;
-    private int    porcentajeIndiceDiscoConfig;
+    private int tamanoRamConfig;
+    private int porcentajeKernelConfig;
+    private int tamanoDiscoConfig;
+    private int porcentajeIndiceDiscoConfig;
     private String tipoMemoriaConfig;
-    private int    cantParticionesConfig;
-    private int[]  tamanosParticionesConfig;
+    private int cantParticionesConfig;
+    private int[] tamanosParticionesConfig;
     private long momentoInicial;
 
     // Paginación
@@ -66,25 +67,25 @@ public class SimuladorGUI extends JFrame {
 
     // Tabla de páginas visual
     private DefaultTableModel modeloTablaPaginas;
-    private JTable            tablaPaginasVisual;
-    private JPanel            panelTablaPaginas;
+    private JTable tablaPaginasVisual;
+    private JPanel panelTablaPaginas;
     private CronometroThread cronometro;
     private ObservadorCargaThread observador;
     private List<Object[]> configuracionProcesos = new ArrayList<>();
     private List<BCP> BCPFinalizados = new ArrayList<>();
-    JComboBox comboQuantum = new JComboBox<>(new Integer[]{1, 2, 3, 4});
-    JComboBox comboAlgoritmo = new JComboBox<>(new String[]{"FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery"});
+    JComboBox comboQuantum = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
+    JComboBox comboAlgoritmo = new JComboBox<>(new String[] { "FCFS", "SRT", "SJF", "RR", "HRRN", "SRR", "Lottery" });
     JButton botonFinalizarYVerEstadisticas = new JButton();
 
     private int pidActualVisual = 1;
-    private final Map<Integer, Color> coloresPID      = new HashMap<>();
-    private final Map<Integer, Color> coloresProcesos  = new HashMap<>();
+    private final Map<Integer, Color> coloresPID = new HashMap<>();
+    private final Map<Integer, Color> coloresProcesos = new HashMap<>();
     private final Color[] paletaProcesos = {
-        new Color(100, 150, 255),
-        new Color(255, 120, 120),
-        new Color(120, 255, 120),
-        new Color(200, 140, 255),
-        new Color(255, 180,  90)
+            new Color(100, 150, 255),
+            new Color(255, 120, 120),
+            new Color(120, 255, 120),
+            new Color(200, 140, 255),
+            new Color(255, 180, 90)
     };
 
     // =========================================================================
@@ -93,25 +94,25 @@ public class SimuladorGUI extends JFrame {
     private DefaultTableModel modeloMemoria, modeloDisco, modeloProcesos, modeloParticiones;
     private JTable tablaMemoriaFisica, tablaDisco, tablaProcesos, tablaParticiones;
 
-    private ColorRowRenderer       renderizadorMemoria;
-    private ProcesoTableRenderer   renderizadorProcesos;
+    private ColorRowRenderer renderizadorMemoria;
+    private ProcesoTableRenderer renderizadorProcesos;
     private ParticionTableRenderer renderizadorParticiones;
 
     // =========================================================================
-    // PANELES DE CPU  (arreglo 4 paneles, índices 0-3)
+    // PANELES DE CPU (arreglo 4 paneles, índices 0-3)
     //
-    //  cpuPanelRegistros[i][j]  → JLabel del registro j en la CPU i
-    //      j = 0 → PID/Nombre
-    //      j = 1 → PC
-    //      j = 2 → IR
-    //      j = 3 → AC
-    //      j = 4 → AX
-    //      j = 5 → BX
-    //      j = 6 → CX
-    //      j = 7 → DX
+    // cpuPanelRegistros[i][j] → JLabel del registro j en la CPU i
+    // j = 0 → PID/Nombre
+    // j = 1 → PC
+    // j = 2 → IR
+    // j = 3 → AC
+    // j = 4 → AX
+    // j = 5 → BX
+    // j = 6 → CX
+    // j = 7 → DX
     // =========================================================================
     private static final int MAX_CPUS = 4;
-    private static final int REGS_POR_CPU = 8;   // PID, PC, IR, AC, AX, BX, CX, DX
+    private static final int REGS_POR_CPU = 8; // PID, PC, IR, AC, AX, BX, CX, DX
 
     /** cpuPanelRegistros[cpuId][registroIdx] */
     private JLabel[][] cpuPanelRegistros;
@@ -123,36 +124,36 @@ public class SimuladorGUI extends JFrame {
     // TERMINAL Y ENTRADA
     // =========================================================================
     private JComboBox<Integer> comboCpus;
-    private JTextArea  areaTerminal;
+    private JTextArea areaTerminal;
     private JTextField campoEntrada;
-    private JLabel     lblPromptEntrada;
-    private JButton    btnEnviarEntrada;
-    private String     ultimaEntrada   = null;
-    private boolean    esperandoEntrada = false;
+    private JLabel lblPromptEntrada;
+    private JButton btnEnviarEntrada;
+    private String ultimaEntrada = null;
+    private boolean esperandoEntrada = false;
 
     // =========================================================================
     // COLORES GLOBALES
     // =========================================================================
-    private final Color COLOR_FONDO        = new Color(24,  24,  24);
-    private final Color COLOR_PANEL        = new Color(36,  36,  36);
-    private final Color COLOR_BORDE        = new Color(90,  90,  90);
-    private final Color COLOR_KERNEL       = new Color(55,  70,  90);
-    private final Color COLOR_LIBRE        = new Color(30,  30,  30);
-    private final Color COLOR_TEXTO_LIBRE  = new Color(57, 255,  20);
-    private final Color COLOR_CPU_INACTIVA = new Color(45,  45,  45);
+    private final Color COLOR_FONDO = new Color(24, 24, 24);
+    private final Color COLOR_PANEL = new Color(36, 36, 36);
+    private final Color COLOR_BORDE = new Color(90, 90, 90);
+    private final Color COLOR_KERNEL = new Color(55, 70, 90);
+    private final Color COLOR_LIBRE = new Color(30, 30, 30);
+    private final Color COLOR_TEXTO_LIBRE = new Color(57, 255, 20);
+    private final Color COLOR_CPU_INACTIVA = new Color(45, 45, 45);
 
     // =========================================================================
     // CONSTRUCTOR
     // =========================================================================
     public SimuladorGUI(Kernel kernel, int cantidadCpusJson) {
-        this.kernel   = kernel;
-        this.memoria  = kernel.getRam();
-        this.disco    = kernel.getDisco();
+        this.kernel = kernel;
+        this.memoria = kernel.getRam();
+        this.disco = kernel.getDisco();
 
-        this.tamanoRamConfig        = this.memoria.getTamanoTotal();
-        this.tamanoDiscoConfig      = this.disco.getTamanoTotal();
-        this.porcentajeKernelConfig = (int)((this.memoria.getInicioUsuario() * 100.0) / this.tamanoRamConfig);
-        this.porcentajeIndiceDiscoConfig = (int)((this.disco.getEspacioIndice() * 100.0) / this.tamanoDiscoConfig);
+        this.tamanoRamConfig = this.memoria.getTamanoTotal();
+        this.tamanoDiscoConfig = this.disco.getTamanoTotal();
+        this.porcentajeKernelConfig = (int) ((this.memoria.getInicioUsuario() * 100.0) / this.tamanoRamConfig);
+        this.porcentajeIndiceDiscoConfig = (int) ((this.disco.getEspacioIndice() * 100.0) / this.tamanoDiscoConfig);
 
         // Detectar tipo de memoria
         try {
@@ -164,13 +165,13 @@ public class SimuladorGUI extends JFrame {
         }
 
         if (kernel.getMemoriaFija() != null && !kernel.getMemoriaFija().getParticiones().isEmpty()) {
-            this.cantParticionesConfig    = kernel.getMemoriaFija().getParticiones().size();
+            this.cantParticionesConfig = kernel.getMemoriaFija().getParticiones().size();
             this.tamanosParticionesConfig = new int[this.cantParticionesConfig];
             for (int i = 0; i < this.cantParticionesConfig; i++) {
                 this.tamanosParticionesConfig[i] = kernel.getMemoriaFija().getParticiones().get(i).getTamano();
             }
         } else {
-            this.cantParticionesConfig    = 0;
+            this.cantParticionesConfig = 0;
             this.tamanosParticionesConfig = new int[0];
         }
 
@@ -185,12 +186,12 @@ public class SimuladorGUI extends JFrame {
 
         this.dispatcher = new Dispatcher(this.memoria);
 
-        this.renderizadorMemoria     = new ColorRowRenderer(memoria.getInicioUsuario(), memoria.getInicioUsuario());
-        this.renderizadorProcesos    = new ProcesoTableRenderer();
+        this.renderizadorMemoria = new ColorRowRenderer(memoria.getInicioUsuario(), memoria.getInicioUsuario());
+        this.renderizadorProcesos = new ProcesoTableRenderer();
         this.renderizadorParticiones = new ParticionTableRenderer();
 
         // Reservamos arreglos para los 4 paneles (se llenan en crearPanelCpuYTerminal)
-        cpuPanelRegistros  = new JLabel[MAX_CPUS][REGS_POR_CPU];
+        cpuPanelRegistros = new JLabel[MAX_CPUS][REGS_POR_CPU];
         cpuPanelContenedor = new JPanel[MAX_CPUS];
 
         // Valor leído del JSON → limitar entre 1 y MAX_CPUS
@@ -220,21 +221,25 @@ public class SimuladorGUI extends JFrame {
         panelCentral.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill    = GridBagConstraints.BOTH;
-        gbc.insets  = new Insets(4, 4, 4, 4);
-        gbc.gridy   = 0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(4, 4, 4, 4);
+        gbc.gridy = 0;
         gbc.weighty = 1.0;
 
-        gbc.gridx   = 0; gbc.weightx = 0.15;
+        gbc.gridx = 0;
+        gbc.weightx = 0.15;
         panelCentral.add(crearPanelRAM(), gbc);
 
-        gbc.gridx   = 1; gbc.weightx = 0.15;
+        gbc.gridx = 1;
+        gbc.weightx = 0.15;
         panelCentral.add(crearPanelDisco(), gbc);
 
-        gbc.gridx   = 2; gbc.weightx = 0.36;
+        gbc.gridx = 2;
+        gbc.weightx = 0.36;
         panelCentral.add(crearPanelProcesoYParticiones(), gbc);
 
-        gbc.gridx   = 3; gbc.weightx = 0.34;
+        gbc.gridx = 3;
+        gbc.weightx = 0.34;
         panelCentral.add(crearPanelCpuYTerminal(), gbc);
 
         add(panelCentral, BorderLayout.CENTER);
@@ -253,17 +258,17 @@ public class SimuladorGUI extends JFrame {
         panel.setBackground(COLOR_PANEL);
         panel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, COLOR_BORDE));
 
-        JButton btnCargar  = new JButton("Cargar ASM");
-        //JButton btnPaso    = new JButton("Paso a Paso");
-        //JButton btnTodo    = new JButton("Ejecutar Todo");
+        JButton btnCargar = new JButton("Cargar ASM");
+        // JButton btnPaso = new JButton("Paso a Paso");
+        // JButton btnTodo = new JButton("Ejecutar Todo");
         JButton btnIniciar = new JButton("Iniciar CPUs");
-       // JButton btnLimpiar = new JButton("Reset");
+        // JButton btnLimpiar = new JButton("Reset");
 
         estilizarBotonSimple(btnCargar);
-       // estilizarBotonSimple(btnPaso);
-       // estilizarBotonSimple(btnTodo);
+        // estilizarBotonSimple(btnPaso);
+        // estilizarBotonSimple(btnTodo);
         estilizarBotonSimple(btnIniciar);
-        //estilizarBotonSimple(btnLimpiar);
+        // estilizarBotonSimple(btnLimpiar);
 
         // --- ComboBox de cantidad de CPUs ---
         JLabel lblCpus = new JLabel("Núcleos:");
@@ -272,18 +277,17 @@ public class SimuladorGUI extends JFrame {
         JLabel lblQuantum = new JLabel("Quantum (Para algoritmos que apliquen):");
         lblQuantum.setForeground(Color.WHITE);
         lblQuantum.setFont(new Font("SansSerif", Font.BOLD, 12));
-        
+
         botonFinalizarYVerEstadisticas.setText("Ver estadísticas");
         estilizarBotonSimple(botonFinalizarYVerEstadisticas);
-        
-        
+
         comboQuantum.setBackground(new Color(60, 60, 60));
         comboQuantum.setForeground(Color.WHITE);
         comboQuantum.setMaximumSize(new Dimension(60, 28));
         comboQuantum.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        comboCpus = new JComboBox<>(new Integer[]{1, 2, 3, 4});
-        comboCpus.setSelectedItem(cantidadCpusActiva);        // Defecto: viene del JSON
+        comboCpus = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
+        comboCpus.setSelectedItem(cantidadCpusActiva); // Defecto: viene del JSON
         comboCpus.setBackground(new Color(60, 60, 60));
         comboCpus.setForeground(Color.WHITE);
         comboCpus.setMaximumSize(new Dimension(60, 28));
@@ -296,32 +300,28 @@ public class SimuladorGUI extends JFrame {
         lblAlgoritmo.setForeground(Color.WHITE);
         lblAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        
         comboAlgoritmo.setBackground(new Color(60, 60, 60));
         comboAlgoritmo.setForeground(Color.WHITE);
         comboAlgoritmo.setFont(new Font("SansSerif", Font.BOLD, 12));
         comboAlgoritmo.setPreferredSize(new Dimension(110, 28));
 
         // Acción opcional: imprimir en terminal cuando cambia el algoritmo
-        comboAlgoritmo.addActionListener(e ->
-            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(), (int) comboQuantum.getSelectedItem())
-        );
-        comboQuantum.addActionListener(e ->
-            this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(), (int) comboQuantum.getSelectedItem())
-        );
-        this.botonFinalizarYVerEstadisticas.addActionListener(e ->
-            VentanaEstadisticas.mostrar(this, BCPFinalizados, momentoInicial)
-        );
+        comboAlgoritmo.addActionListener(e -> this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(),
+                (int) comboQuantum.getSelectedItem()));
+        comboQuantum.addActionListener(e -> this.setearAlgoritmo((String) comboAlgoritmo.getSelectedItem(),
+                (int) comboQuantum.getSelectedItem()));
+        this.botonFinalizarYVerEstadisticas
+                .addActionListener(e -> VentanaEstadisticas.mostrar(this, BCPFinalizados, momentoInicial));
 
         btnCargar.addActionListener(e -> menuCargarArchivo());
-       // btnPaso.addActionListener(e -> ejecutarPasoAPaso());
-       // btnTodo.addActionListener(e -> alternarEjecucionAutomatica());
+        // btnPaso.addActionListener(e -> ejecutarPasoAPaso());
+        // btnTodo.addActionListener(e -> alternarEjecucionAutomatica());
         btnIniciar.addActionListener(e -> iniciarCpusEnHilos());
-       // btnLimpiar.addActionListener(e -> limpiarSistema());
+        // btnLimpiar.addActionListener(e -> limpiarSistema());
 
         panel.add(btnCargar);
-       // panel.add(btnPaso);
-       // panel.add(btnTodo);
+        // panel.add(btnPaso);
+        // panel.add(btnTodo);
         panel.add(Box.createHorizontalStrut(16));
         panel.add(lblCpus);
         panel.add(comboCpus);
@@ -332,27 +332,28 @@ public class SimuladorGUI extends JFrame {
         panel.add(lblQuantum);
         panel.add(comboQuantum);
         panel.add(botonFinalizarYVerEstadisticas);
-       // panel.add(btnLimpiar);
+        // panel.add(btnLimpiar);
 
         return panel;
     }
-    private void MostrarEstadísticas(List<BCP> BCPFinalizados){
-        for (BCP proceso : BCPFinalizados){
+
+    private void MostrarEstadísticas(List<BCP> BCPFinalizados) {
+        for (BCP proceso : BCPFinalizados) {
             proceso.construirDatosEstadísticos(momentoInicial);
         }
-        
+
     }
-    
-    private void setearAlgoritmo(String algoritmo, int quantum){
-        switch(algoritmo){
+
+    private void setearAlgoritmo(String algoritmo, int quantum) {
+        switch (algoritmo) {
             case "FCFS":
-                this.kernel.colocarEstrategia(new PlanificadorFCFS(),new PlanificadorFCFS());
+                this.kernel.colocarEstrategia(new PlanificadorFCFS(), new PlanificadorFCFS());
                 break;
             case "HRRN":
-                this.kernel.colocarEstrategia(new PlanificadorHRRN(),new PlanificadorHRRN());
+                this.kernel.colocarEstrategia(new PlanificadorHRRN(), new PlanificadorHRRN());
                 break;
             case "SJF":
-                this.kernel.colocarEstrategia(new PlanificadorSJF(),new PlanificadorSJF());
+                this.kernel.colocarEstrategia(new PlanificadorSJF(), new PlanificadorSJF());
                 break;
             case "RR":
                 this.kernel.colocarEstrategia(new PlanificadorRoundRobin(quantum), new PlanificadorRoundRobin(quantum));
@@ -361,70 +362,66 @@ public class SimuladorGUI extends JFrame {
                 break;
         }
     }
+
     private void configurarAlgoritmo() {
         String algoritmo = (String) comboAlgoritmo.getSelectedItem();
         int quantum = (int) comboQuantum.getSelectedItem(); // quantum por defecto; podrías exponerlo en la UI
 
         tarea1.joseandres.estrategia.EstrategiaPlanificacion estrategia;
-        tarea1.joseandres.estrategia.AlgoritmoPlanificador   descripcion;
+        tarea1.joseandres.estrategia.AlgoritmoPlanificador descripcion;
 
         switch (algoritmo) {
             case "FCFS": {
-                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs =
-                        new tarea1.joseandres.algoritmos.PlanificadorFCFS();
-                estrategia  = fcfs;
+                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs = new tarea1.joseandres.algoritmos.PlanificadorFCFS();
+                estrategia = fcfs;
                 descripcion = fcfs;
                 break;
             }
             case "SJF": {
-                tarea1.joseandres.algoritmos.PlanificadorSJF sjf =
-                        new tarea1.joseandres.algoritmos.PlanificadorSJF();
-                estrategia  = sjf;
+                tarea1.joseandres.algoritmos.PlanificadorSJF sjf = new tarea1.joseandres.algoritmos.PlanificadorSJF();
+                estrategia = sjf;
                 descripcion = sjf;
                 break;
             }
             case "HRRN": {
-                tarea1.joseandres.algoritmos.PlanificadorHRRN hrrn =
-                        new tarea1.joseandres.algoritmos.PlanificadorHRRN();
-                estrategia  = hrrn;
+                tarea1.joseandres.algoritmos.PlanificadorHRRN hrrn = new tarea1.joseandres.algoritmos.PlanificadorHRRN();
+                estrategia = hrrn;
                 descripcion = hrrn;
                 break;
             }
             case "RR": {
-                tarea1.joseandres.algoritmos.PlanificadorRoundRobin rr =
-                        new tarea1.joseandres.algoritmos.PlanificadorRoundRobin(quantum);
-                estrategia  = rr;
+                tarea1.joseandres.algoritmos.PlanificadorRoundRobin rr = new tarea1.joseandres.algoritmos.PlanificadorRoundRobin(
+                        quantum);
+                estrategia = rr;
                 descripcion = rr;
                 break;
             }
             case "SRT": {
-                tarea1.joseandres.algoritmos.PlanificadorSRT srt =
-                        new tarea1.joseandres.algoritmos.PlanificadorSRT();
-                estrategia  = srt;
+                tarea1.joseandres.algoritmos.PlanificadorSRT srt = new tarea1.joseandres.algoritmos.PlanificadorSRT();
+                estrategia = srt;
                 descripcion = srt;
-                quantum     = 1;
+                quantum = 1;
                 break;
             }
             case "SRR": {
-                tarea1.joseandres.algoritmos.PlanificadorSRR srr =
-                        new tarea1.joseandres.algoritmos.PlanificadorSRR(quantum);
-                estrategia  = srr;
+                tarea1.joseandres.algoritmos.PlanificadorSRR srr = new tarea1.joseandres.algoritmos.PlanificadorSRR(
+                        quantum);
+                estrategia = srr;
                 descripcion = srr;
                 break;
             }
             case "Lottery": {
-                tarea1.joseandres.algoritmos.PlanificadorLottery lottery =
-                        new tarea1.joseandres.algoritmos.PlanificadorLottery(quantum);
-                estrategia  = lottery;
+                tarea1.joseandres.algoritmos.PlanificadorLottery lottery = new tarea1.joseandres.algoritmos.PlanificadorLottery(
+                        quantum);
+                estrategia = lottery;
                 descripcion = lottery;
                 break;
             }
-            
+
             default: {
                 // Fallback a FCFS
-                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs =
-                        new tarea1.joseandres.algoritmos.PlanificadorFCFS();
-                estrategia  = fcfs;
+                tarea1.joseandres.algoritmos.PlanificadorFCFS fcfs = new tarea1.joseandres.algoritmos.PlanificadorFCFS();
+                estrategia = fcfs;
                 descripcion = fcfs;
             }
         }
@@ -446,8 +443,11 @@ public class SimuladorGUI extends JFrame {
     // PANEL RAM
     // =========================================================================
     private JPanel crearPanelRAM() {
-        modeloMemoria = new DefaultTableModel(new String[]{"Dir", "Contenido"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        modeloMemoria = new DefaultTableModel(new String[] { "Dir", "Contenido" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         tablaMemoriaFisica = crearTablaOscura(modeloMemoria);
         tablaMemoriaFisica.setDefaultRenderer(Object.class, renderizadorMemoria);
@@ -461,8 +461,11 @@ public class SimuladorGUI extends JFrame {
     // PANEL DISCO
     // =========================================================================
     private JPanel crearPanelDisco() {
-        modeloDisco = new DefaultTableModel(new String[]{"Sector", "Dato"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        modeloDisco = new DefaultTableModel(new String[] { "Sector", "Dato" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         tablaDisco = crearTablaOscura(modeloDisco);
 
@@ -475,8 +478,11 @@ public class SimuladorGUI extends JFrame {
     // PANEL PROCESOS + PARTICIONES
     // =========================================================================
     private JPanel crearPanelProcesoYParticiones() {
-        modeloProcesos = new DefaultTableModel(new String[]{"ID", "Nombre", "Estado"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+        modeloProcesos = new DefaultTableModel(new String[] { "ID", "Nombre", "Estado" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         tablaProcesos = crearTablaOscura(modeloProcesos);
         tablaProcesos.setDefaultRenderer(Object.class, renderizadorProcesos);
@@ -485,11 +491,14 @@ public class SimuladorGUI extends JFrame {
         scrollProcesos.getVerticalScrollBar().setUnitIncrement(12);
 
         String[] cabeceras = "DINAMICA".equalsIgnoreCase(tipoMemoriaConfig)
-                ? new String[]{"Bloque Dinámico", "Inicio", "Fin", "Tamaño", "Estado", "Atributo", "-"}
-                : new String[]{"Partición", "Inicio", "Fin", "Tamaño", "Estado", "Utilizado", "Desperdicio"};
+                ? new String[] { "Bloque Dinámico", "Inicio", "Fin", "Tamaño", "Estado", "Atributo", "-" }
+                : new String[] { "Partición", "Inicio", "Fin", "Tamaño", "Estado", "Utilizado", "Desperdicio" };
 
         modeloParticiones = new DefaultTableModel(cabeceras, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         tablaParticiones = crearTablaOscura(modeloParticiones);
         tablaParticiones.setDefaultRenderer(Object.class, renderizadorParticiones);
@@ -513,12 +522,16 @@ public class SimuladorGUI extends JFrame {
         scrollParticiones.getHorizontalScrollBar().setUnitIncrement(20);
 
         String tituloSeccion = "DINAMICA".equalsIgnoreCase(tipoMemoriaConfig)
-                ? "MAPA DE BLOQUES (DINÁMICO)" : "MAPA DE PARTICIONES";
+                ? "MAPA DE BLOQUES (DINÁMICO)"
+                : "MAPA DE PARTICIONES";
 
         // ── Tabla de páginas (visible solo si esPaginado) ────────────────
         modeloTablaPaginas = new DefaultTableModel(
-                new String[]{"Página", "Marco Físico", "Dirección Física"}, 0) {
-            @Override public boolean isCellEditable(int r, int c) { return false; }
+                new String[] { "Página", "Marco Físico", "Dirección Física" }, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
         };
         tablaPaginasVisual = crearTablaOscura(modeloTablaPaginas);
         tablaPaginasVisual.setRowHeight(20);
@@ -532,7 +545,9 @@ public class SimuladorGUI extends JFrame {
                 Component c = super.getTableCellRendererComponent(t, v, sel, foc, row, col);
                 c.setForeground(new Color(180, 230, 255));
                 c.setBackground(row % 2 == 0 ? new Color(28, 36, 48) : new Color(22, 28, 38));
-                if (sel) { c.setBackground(new Color(60, 90, 130)); }
+                if (sel) {
+                    c.setBackground(new Color(60, 90, 130));
+                }
                 return c;
             }
         });
@@ -545,9 +560,13 @@ public class SimuladorGUI extends JFrame {
 
         // Listener: al hacer clic en la tabla de procesos, refrescar tabla de páginas
         tablaProcesos.getSelectionModel().addListSelectionListener(ev -> {
-            if (ev.getValueIsAdjusting()) return;
+            if (ev.getValueIsAdjusting())
+                return;
             int fila = tablaProcesos.getSelectedRow();
-            if (fila < 0) { panelTablaPaginas.setVisible(false); return; }
+            if (fila < 0) {
+                panelTablaPaginas.setVisible(false);
+                return;
+            }
             try {
                 int pid = Integer.parseInt(modeloProcesos.getValueAt(fila, 0).toString());
                 BCP proc = kernel.getListaProcesos().stream()
@@ -558,7 +577,9 @@ public class SimuladorGUI extends JFrame {
                 } else {
                     panelTablaPaginas.setVisible(false);
                 }
-            } catch (Exception ignored) { panelTablaPaginas.setVisible(false); }
+            } catch (Exception ignored) {
+                panelTablaPaginas.setVisible(false);
+            }
         });
 
         // ── Split principal: procesos / particiones / tabla páginas ──────
@@ -589,35 +610,38 @@ public class SimuladorGUI extends JFrame {
     private void refrescarTablaPaginas(BCP proc) {
         modeloTablaPaginas.setRowCount(0);
         tarea1.joseandres.memoria.TablaPaginas tablaProc = proc.getTablaPaginas();
-        if (tablaProc == null) return;
+        if (tablaProc == null)
+            return;
         java.util.Map<Integer, Integer> mapaPaginas = tablaProc.getTabla();
-        if (mapaPaginas == null) return;
+        if (mapaPaginas == null)
+            return;
         try {
             int tp = kernel.getMemoriaPaginada().getTamanoPagina();
             for (java.util.Map.Entry<Integer, Integer> entrada : mapaPaginas.entrySet()) {
-                int pagina   = entrada.getKey();
-                int marco    = entrada.getValue();
+                int pagina = entrada.getKey();
+                int marco = entrada.getValue();
                 int dirFisica = marco * tp;
                 String dirHex = "0x" + Integer.toHexString(dirFisica).toUpperCase();
-                modeloTablaPaginas.addRow(new Object[]{
-                    "Página " + pagina,
-                    "Marco  " + marco,
-                    dirFisica + "  (" + dirHex + ")"
+                modeloTablaPaginas.addRow(new Object[] {
+                        "Página " + pagina,
+                        "Marco  " + marco,
+                        dirFisica + "  (" + dirHex + ")"
                 });
             }
         } catch (Exception e) {
             // Fallback: si no hay MemoriaPaginada activa, mostrar sin dirección física
             for (java.util.Map.Entry<Integer, Integer> entrada : mapaPaginas.entrySet()) {
-                modeloTablaPaginas.addRow(new Object[]{
-                    "Página " + entrada.getKey(),
-                    "Marco  " + entrada.getValue(),
-                    "---"
+                modeloTablaPaginas.addRow(new Object[] {
+                        "Página " + entrada.getKey(),
+                        "Marco  " + entrada.getValue(),
+                        "---"
                 });
             }
         }
         // Actualizar título del panel con PID y nombre del proceso
         TitledBorder tb = (TitledBorder) panelTablaPaginas.getBorder();
-        if (tb != null) tb.setTitle("TABLA DE PÁGINAS  — PID " + proc.id + " · " + proc.nombreProceso);
+        if (tb != null)
+            tb.setTitle("TABLA DE PÁGINAS  — PID " + proc.id + " · " + proc.nombreProceso);
         panelTablaPaginas.repaint();
     }
 
@@ -670,7 +694,7 @@ public class SimuladorGUI extends JFrame {
         panelEntrada.setBackground(new Color(22, 22, 22));
         panelEntrada.setBorder(BorderFactory.createEmptyBorder(6, 8, 8, 8));
         panelEntrada.add(lblPromptEntrada, BorderLayout.NORTH);
-        panelEntrada.add(campoEntrada,     BorderLayout.CENTER);
+        panelEntrada.add(campoEntrada, BorderLayout.CENTER);
         panelEntrada.add(btnEnviarEntrada, BorderLayout.EAST);
 
         JPanel terminalWrapper = new JPanel(new BorderLayout(0, 6));
@@ -702,21 +726,21 @@ public class SimuladorGUI extends JFrame {
         panel.setBackground(new Color(22, 22, 30));
         panel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
-        Font f     = new Font("Monospaced", Font.BOLD, 11);
+        Font f = new Font("Monospaced", Font.BOLD, 11);
         Color cPID = new Color(255, 255, 100);
-        Color cPC  = new Color(0,   220, 255);
-        Color cIR  = Color.WHITE;
-        Color cAC  = new Color(80,  255, 120);
-        Color cReg = new Color(255, 180,  60);
+        Color cPC = new Color(0, 220, 255);
+        Color cIR = Color.WHITE;
+        Color cAC = new Color(80, 255, 120);
+        Color cReg = new Color(255, 180, 60);
 
         cpuPanelRegistros[cpuId][0] = crearLabelRegistro("PID", "IDLE", f, cPID);
-        cpuPanelRegistros[cpuId][1] = crearLabelRegistro("PC",  "---",  f, cPC);
-        cpuPanelRegistros[cpuId][2] = crearLabelRegistro("IR",  "---",  f, cIR);
-        cpuPanelRegistros[cpuId][3] = crearLabelRegistro("AC",  "---",  f, cAC);
-        cpuPanelRegistros[cpuId][4] = crearLabelRegistro("AX",  "---",  f, cReg);
-        cpuPanelRegistros[cpuId][5] = crearLabelRegistro("BX",  "---",  f, cReg);
-        cpuPanelRegistros[cpuId][6] = crearLabelRegistro("CX",  "---",  f, cReg);
-        cpuPanelRegistros[cpuId][7] = crearLabelRegistro("DX",  "---",  f, cReg);
+        cpuPanelRegistros[cpuId][1] = crearLabelRegistro("PC", "---", f, cPC);
+        cpuPanelRegistros[cpuId][2] = crearLabelRegistro("IR", "---", f, cIR);
+        cpuPanelRegistros[cpuId][3] = crearLabelRegistro("AC", "---", f, cAC);
+        cpuPanelRegistros[cpuId][4] = crearLabelRegistro("AX", "---", f, cReg);
+        cpuPanelRegistros[cpuId][5] = crearLabelRegistro("BX", "---", f, cReg);
+        cpuPanelRegistros[cpuId][6] = crearLabelRegistro("CX", "---", f, cReg);
+        cpuPanelRegistros[cpuId][7] = crearLabelRegistro("DX", "---", f, cReg);
 
         for (JLabel lbl : cpuPanelRegistros[cpuId]) {
             panel.add(lbl);
@@ -779,11 +803,16 @@ public class SimuladorGUI extends JFrame {
      */
     private void iniciarCpusEnHilos() {
         this.momentoInicial = System.currentTimeMillis();
-        if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
-        for (Cpu c : cpus)        c.setCorriendo(false);
-        for (Thread t : hilosCpu) t.interrupt();
-        if (cronometro != null)   cronometro.interrupt();
-        if (observador != null)   observador.interrupt();
+        if (timerSimulacion != null && timerSimulacion.isRunning())
+            timerSimulacion.stop();
+        for (Cpu c : cpus)
+            c.setCorriendo(false);
+        for (Thread t : hilosCpu)
+            t.interrupt();
+        if (cronometro != null)
+            cronometro.interrupt();
+        if (observador != null)
+            observador.interrupt();
 
         int cpusAInterpretar = (Integer) comboCpus.getSelectedItem();
         cpus.clear();
@@ -791,14 +820,19 @@ public class SimuladorGUI extends JFrame {
 
         for (int i = 0; i < cpusAInterpretar; i++) {
             tarea1.joseandres.memoria.MemoriaPaginada mpCpu = null;
-            try { mpCpu = this.kernel.getMemoriaPaginada(); } catch (Exception _ignored) {}
+            try {
+                mpCpu = this.kernel.getMemoriaPaginada();
+            } catch (Exception _ignored) {
+            }
 
             Cpu nuevaCpu = new Cpu(i, this.kernel, this.memoria, this.dispatcher, this.disco, mpCpu, this);
             nuevaCpu.setDelayReloj(1200);
             nuevaCpu.setCorriendo(true);
 
-            final int cpuId  = i;
+            final int cpuId = i;
             final Cpu cpuRef = nuevaCpu;
+            // FIX: rastrea el último PID activo de esta CPU para detectar finalización
+            final int[] pidAnterior = { -1 };
             nuevaCpu.setPasoCallback((id, bcp) -> {
                 bcpActual = bcp;
                 actualizarPanelCpu(id, bcp);
@@ -807,11 +841,40 @@ public class SimuladorGUI extends JFrame {
                 tablaMemoriaFisica.repaint();
                 if (dirIR >= 0 && dirIR < tablaMemoriaFisica.getRowCount())
                     tablaMemoriaFisica.scrollRectToVisible(tablaMemoriaFisica.getCellRect(dirIR, 0, true));
+
+                int pidActual = (bcp != null) ? bcp.id : -1;
+
+                // FIX: detectar cuando el proceso anterior acaba de terminar
+                if (pidAnterior[0] != -1 && pidActual != pidAnterior[0]) {
+                    BCP bcpTerminado = null;
+                    if (kernel.getListaProcesos() != null) {
+                        for (BCP p : kernel.getListaProcesos()) {
+                            if (p != null && p.id == pidAnterior[0]
+                                    && "TERMINADO".equalsIgnoreCase(p.estado)) {
+                                bcpTerminado = p;
+                                break;
+                            }
+                        }
+                    }
+                    if (bcpTerminado != null) {
+                        final BCP bcpFinal = bcpTerminado;
+                        BCPFinalizados.add(bcpFinal);
+                        imprimirEnTerminal("✔ PID " + bcpFinal.id
+                                + " [" + bcpFinal.nombreProceso + "] terminado — memoria liberada.");
+                    }
+                }
+                pidAnterior[0] = pidActual;
+
                 if (bcp != null)
                     actualizarEstadoProcesoPorId(bcp.id, "EJECUCION (CPU " + cpuId + ")");
-                tablaProcesos.repaint();
-                tablaParticiones.repaint();
-                if (dirIR % 4 == 0) actualizarTablas();
+
+                // FIX: actualizar tablas en cada paso (sin condicional) para que
+                // la liberación de memoria del último proceso se refleje siempre
+                SwingUtilities.invokeLater(() -> {
+                    actualizarTablas();
+                    tablaProcesos.repaint();
+                    tablaParticiones.repaint();
+                });
             });
 
             cpus.add(nuevaCpu);
@@ -854,7 +917,8 @@ public class SimuladorGUI extends JFrame {
     }
 
     /**
-     * Busca el proceso con ese PID en la tabla de procesos y actualiza su columna Estado
+     * Busca el proceso con ese PID en la tabla de procesos y actualiza su columna
+     * Estado
      * directamente en el modelo para que el renderizador lo pinte al instante.
      */
     private void actualizarEstadoProcesoPorId(int pid, String nuevoEstado) {
@@ -868,7 +932,7 @@ public class SimuladorGUI extends JFrame {
     }
 
     // =========================================================================
-    // ACTUALIZACIÓN DE PANELES CPU  (llamado desde Swing EDT o Timer)
+    // ACTUALIZACIÓN DE PANELES CPU (llamado desde Swing EDT o Timer)
     // =========================================================================
     /**
      * Refresca los labels de todas las CPUs activas con el BCP que tienen asignado.
@@ -889,11 +953,12 @@ public class SimuladorGUI extends JFrame {
      * Actualiza un panel de CPU individual con los datos de un BCP.
      * Diseñado para ser llamado desde Dispatcher u otros componentes.
      *
-     * @param cpuId  índice de la CPU (0-3)
-     * @param bcp    BCP actualmente en esa CPU, o null si está IDLE
+     * @param cpuId índice de la CPU (0-3)
+     * @param bcp   BCP actualmente en esa CPU, o null si está IDLE
      */
     public void actualizarPanelCpu(int cpuId, BCP bcp) {
-        if (cpuId < 0 || cpuId >= MAX_CPUS) return;
+        if (cpuId < 0 || cpuId >= MAX_CPUS)
+            return;
 
         SwingUtilities.invokeLater(() -> {
             JLabel[] lbls = cpuPanelRegistros[cpuId];
@@ -930,7 +995,8 @@ public class SimuladorGUI extends JFrame {
         }
         timerSimulacion = new Timer(600, e -> {
             boolean continua = ejecutarPasoAPaso();
-            if (!continua) timerSimulacion.stop();
+            if (!continua)
+                timerSimulacion.stop();
         });
         timerSimulacion.start();
         imprimirEnTerminal("Ejecución automática iniciada.");
@@ -940,7 +1006,10 @@ public class SimuladorGUI extends JFrame {
         if (cpus.isEmpty()) {
             // Compatibilidad: crear CPU 0 on-demand en modo paso a paso
             tarea1.joseandres.memoria.MemoriaPaginada mp0 = null;
-            try { mp0 = kernel.getMemoriaPaginada(); } catch (Exception _ig) {}
+            try {
+                mp0 = kernel.getMemoriaPaginada();
+            } catch (Exception _ig) {
+            }
             Cpu cpu0 = new Cpu(0, kernel, memoria, dispatcher, disco, mp0, this);
             cpus.add(cpu0);
         }
@@ -1010,7 +1079,7 @@ public class SimuladorGUI extends JFrame {
             btnConfirmar.addActionListener(e -> {
                 // Acumular en la lista persistente (permite cargar varias veces)
                 for (int i = 0; i < archivosSeleccionados.length; i++) {
-                    configuracionProcesos.add(new Object[]{
+                    configuracionProcesos.add(new Object[] {
                             archivosSeleccionados[i].getName(),
                             archivosSeleccionados[i].getAbsolutePath(),
                             (int) spinners[i].getValue()
@@ -1028,7 +1097,7 @@ public class SimuladorGUI extends JFrame {
             dialogo.setLocationRelativeTo(this);
             dialogo.setVisible(true);
         }
-}
+    }
 
     // =========================================================================
     // TERMINAL
@@ -1042,7 +1111,7 @@ public class SimuladorGUI extends JFrame {
 
     public void solicitarEntrada(String mensaje) {
         esperandoEntrada = true;
-        ultimaEntrada    = null;
+        ultimaEntrada = null;
         lblPromptEntrada.setText(mensaje);
         campoEntrada.setText("");
         campoEntrada.setEnabled(true);
@@ -1052,13 +1121,15 @@ public class SimuladorGUI extends JFrame {
     }
 
     private void enviarEntradaTerminal() {
-        if (!esperandoEntrada) return;
+        if (!esperandoEntrada)
+            return;
         String texto = campoEntrada.getText().trim();
         if (texto.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar un valor.", "Entrada vacía", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Debe ingresar un valor.", "Entrada vacía",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
-        ultimaEntrada    = texto;
+        ultimaEntrada = texto;
         esperandoEntrada = false;
         imprimirEnTerminal("[USUARIO] " + texto);
         campoEntrada.setText("");
@@ -1068,36 +1139,51 @@ public class SimuladorGUI extends JFrame {
         ejecutarPasoAPaso();
     }
 
-    public String  consumirEntrada()        { String e = ultimaEntrada; ultimaEntrada = null; return e; }
-    public boolean hayEntradaDisponible()   { return ultimaEntrada != null; }
-    public boolean estaEsperandoEntrada()   { return esperandoEntrada; }
+    public String consumirEntrada() {
+        String e = ultimaEntrada;
+        ultimaEntrada = null;
+        return e;
+    }
+
+    public boolean hayEntradaDisponible() {
+        return ultimaEntrada != null;
+    }
+
+    public boolean estaEsperandoEntrada() {
+        return esperandoEntrada;
+    }
 
     // =========================================================================
     // ACTUALIZACIÓN DE TABLAS
     // =========================================================================
     private void actualizarTablas() {
-        if (memoria == null || disco == null || kernel == null) return;
+        if (memoria == null || disco == null || kernel == null)
+            return;
 
         // RAM
         modeloMemoria.setRowCount(0);
         for (int i = 0; i < memoria.getTamanoTotal(); i++) {
-            modeloMemoria.addRow(new Object[]{i, traducirInstruccion(memoria.leerCelda(i))});
+            modeloMemoria.addRow(new Object[] { i, traducirInstruccion(memoria.leerCelda(i)) });
         }
 
         // Disco
         modeloDisco.setRowCount(0);
         for (int i = 0; i < disco.getTamanoTotal(); i++) {
             String dato = disco.leer(i);
-            modeloDisco.addRow(new Object[]{i, (i < disco.getEspacioIndice()) ? dato : traducirInstruccion(dato)});
+            modeloDisco.addRow(new Object[] { i, (i < disco.getEspacioIndice()) ? dato : traducirInstruccion(dato) });
         }
 
-        // Procesos
+        // Procesos — mostrar todos incluyendo TERMINADO para que el usuario vea el
+        // historial
         modeloProcesos.setRowCount(0);
         if (kernel.getListaProcesos() != null) {
             for (BCP p : kernel.getListaProcesos()) {
                 if (p != null) {
                     obtenerColorProceso(p.id);
-                    modeloProcesos.addRow(new Object[]{p.id, p.nombreProceso, p.estado});
+                    // Normalizar el estado visual: si el kernel marca el proceso como
+                    // terminado con cualquier variante, mostrarlo siempre como "TERMINADO"
+                    String estadoVisual = "TERMINADO".equalsIgnoreCase(p.estado) ? "TERMINADO" : p.estado;
+                    modeloProcesos.addRow(new Object[] { p.id, p.nombreProceso, estadoVisual });
                 }
             }
         }
@@ -1110,30 +1196,34 @@ public class SimuladorGUI extends JFrame {
                 tarea1.joseandres.memoria.MemoriaPaginada mp = kernel.getMemoriaPaginada();
                 if (mp != null) {
                     boolean[] bitmap = mp.getBitmap();
-                    int tp           = mp.getTamanoPagina();
+                    int tp = mp.getTamanoPagina();
                     if (bitmap != null) {
                         for (int i = 0; i < bitmap.length; i++) {
                             String estadoMarco = bitmap[i] ? "OCUPADO" : "LIBRE";
                             int dirInicio = i * tp;
-                            int dirFin    = dirInicio + tp - 1;
-                            modeloParticiones.addRow(new Object[]{
-                                "Marco #" + i,
-                                tp + " celdas",
-                                String.format("%d - %d", dirInicio, dirFin),
-                                estadoMarco
+                            int dirFin = dirInicio + tp - 1;
+                            modeloParticiones.addRow(new Object[] {
+                                    "Marco #" + i,
+                                    tp + " celdas",
+                                    String.format("%d - %d", dirInicio, dirFin),
+                                    estadoMarco
                             });
                         }
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         } else if ("DINAMICA".equalsIgnoreCase(tipoMemoriaConfig)) {
             List<Particion> bloques = kernel.getMemoriaDinamica().getBloques();
             if (bloques != null) {
                 for (Particion b : bloques) {
                     int inicio = b.getInicio(), tamano = b.getTamano();
-                    String estado   = b.isLibre() ? "LIBRE (Hueco disponible)" : "OCUPADO - PID: " + (b.getProceso() != null ? b.getProceso().id : "?");
-                    String atributo = b.isLibre() ? "Bloque Limpio" : "Proceso Activo: " + (b.getProceso() != null ? b.getProceso().nombreProceso : "-");
-                    modeloParticiones.addRow(new Object[]{"Bloque #" + b.getNumero(), inicio, inicio + tamano - 1, tamano + " celdas", estado, atributo, "---"});
+                    String estado = b.isLibre() ? "LIBRE (Hueco disponible)"
+                            : "OCUPADO - PID: " + (b.getProceso() != null ? b.getProceso().id : "?");
+                    String atributo = b.isLibre() ? "Bloque Limpio"
+                            : "Proceso Activo: " + (b.getProceso() != null ? b.getProceso().nombreProceso : "-");
+                    modeloParticiones.addRow(new Object[] { "Bloque #" + b.getNumero(), inicio, inicio + tamano - 1,
+                            tamano + " celdas", estado, atributo, "---" });
                 }
             }
         } else {
@@ -1143,20 +1233,26 @@ public class SimuladorGUI extends JFrame {
                     int inicio = p.getInicio(), tamano = p.getTamano();
                     String estado, utilizado, desperdicio;
                     if (p.isLibre()) {
-                        estado = "LIBRE (Vacía)"; utilizado = "---"; desperdicio = "---";
+                        estado = "LIBRE (Vacía)";
+                        utilizado = "---";
+                        desperdicio = "---";
                     } else {
-                        int pid  = (p.getProceso() != null) ? p.getProceso().id : -1;
-                        estado   = "OCUPADA - PID: " + (pid > 0 ? pid : "?");
+                        int pid = (p.getProceso() != null) ? p.getProceso().id : -1;
+                        estado = "OCUPADA - PID: " + (pid > 0 ? pid : "?");
                         if (p.getProceso() != null) {
-                            int usado    = p.getProceso().getAlcance();
-                            int fragInt  = tamano - usado;
+                            int usado = p.getProceso().getAlcance();
+                            int fragInt = tamano - usado;
                             double pUtil = tamano > 0 ? (double) usado / tamano * 100 : 0;
                             double pDesp = tamano > 0 ? (double) fragInt / tamano * 100 : 0;
-                            utilizado    = String.format("%d celdas (%.1f%%)", usado,   pUtil);
-                            desperdicio  = String.format("%d celdas (%.1f%%)", fragInt, pDesp);
-                        } else { utilizado = "?"; desperdicio = "?"; }
+                            utilizado = String.format("%d celdas (%.1f%%)", usado, pUtil);
+                            desperdicio = String.format("%d celdas (%.1f%%)", fragInt, pDesp);
+                        } else {
+                            utilizado = "?";
+                            desperdicio = "?";
+                        }
                     }
-                    modeloParticiones.addRow(new Object[]{"Partición #" + p.getNumero(), inicio, inicio + tamano - 1, tamano + " celdas", estado, utilizado, desperdicio});
+                    modeloParticiones.addRow(new Object[] { "Partición #" + p.getNumero(), inicio, inicio + tamano - 1,
+                            tamano + " celdas", estado, utilizado, desperdicio });
                 }
             }
         }
@@ -1166,8 +1262,10 @@ public class SimuladorGUI extends JFrame {
         for (int ci = 0; ci < cpus.size(); ci++) {
             try {
                 int dir = cpus.get(ci).getDireccionIRActual();
-                if (dir >= 0) renderizadorMemoria.setPuntero(ci, dir);
-            } catch (Exception ignored) {}
+                if (dir >= 0)
+                    renderizadorMemoria.setPuntero(ci, dir);
+            } catch (Exception ignored) {
+            }
         }
 
         tablaMemoriaFisica.repaint();
@@ -1179,9 +1277,12 @@ public class SimuladorGUI extends JFrame {
     // RESET
     // =========================================================================
     private void limpiarSistema() {
-        if (timerSimulacion != null && timerSimulacion.isRunning()) timerSimulacion.stop();
-        for (Cpu c : cpus) c.setCorriendo(false);
-        for (Thread t : hilosCpu) t.interrupt();
+        if (timerSimulacion != null && timerSimulacion.isRunning())
+            timerSimulacion.stop();
+        for (Cpu c : cpus)
+            c.setCorriendo(false);
+        for (Thread t : hilosCpu)
+            t.interrupt();
         dispose();
         SwingUtilities.invokeLater(() -> {
             Kernel nuevoKernel = new Kernel(
@@ -1244,7 +1345,8 @@ public class SimuladorGUI extends JFrame {
     }
 
     private Color obtenerColorProceso(int pid) {
-        if (pid <= 0) return new Color(220, 220, 220);
+        if (pid <= 0)
+            return new Color(220, 220, 220);
         if (!coloresProcesos.containsKey(pid))
             coloresProcesos.put(pid, paletaProcesos[(pid - 1) % paletaProcesos.length]);
         return coloresProcesos.get(pid);
@@ -1256,17 +1358,22 @@ public class SimuladorGUI extends JFrame {
 
     private BCP buscarProcesoPorDireccion(int direccion) {
         for (BCP p : kernel.getListaProcesos()) {
-            if (perteneceAlProceso(p, direccion)) return p;
+            if (perteneceAlProceso(p, direccion))
+                return p;
         }
         return null;
     }
 
     private boolean perteneceAlProceso(BCP proceso, int direccion) {
-        Integer inicio = obtenerValorEnteroCampo(proceso, "baseMemoria", "inicioMemoria", "direccionBase", "base", "inicio");
-        Integer tamano = obtenerValorEnteroCampo(proceso, "tamanoProceso", "limiteMemoria", "longitudProceso", "size", "tamano", "alcance");
-        if (inicio != null && tamano != null) return direccion >= inicio && direccion < (inicio + tamano);
+        Integer inicio = obtenerValorEnteroCampo(proceso, "baseMemoria", "inicioMemoria", "direccionBase", "base",
+                "inicio");
+        Integer tamano = obtenerValorEnteroCampo(proceso, "tamanoProceso", "limiteMemoria", "longitudProceso", "size",
+                "tamano", "alcance");
+        if (inicio != null && tamano != null)
+            return direccion >= inicio && direccion < (inicio + tamano);
         Integer fin = obtenerValorEnteroCampo(proceso, "finMemoria", "direccionFin", "limiteSuperior", "topeMemoria");
-        if (inicio != null && fin != null) return direccion >= inicio && direccion <= fin;
+        if (inicio != null && fin != null)
+            return direccion >= inicio && direccion <= fin;
         return false;
     }
 
@@ -1276,9 +1383,12 @@ public class SimuladorGUI extends JFrame {
                 Field campo = obj.getClass().getDeclaredField(nombre);
                 campo.setAccessible(true);
                 Object valor = campo.get(obj);
-                if (valor instanceof Integer) return (Integer) valor;
-                if (valor != null) return Integer.parseInt(valor.toString());
-            } catch (Exception ignored) {}
+                if (valor instanceof Integer)
+                    return (Integer) valor;
+                if (valor != null)
+                    return Integer.parseInt(valor.toString());
+            } catch (Exception ignored) {
+            }
         }
         return null;
     }
@@ -1315,7 +1425,9 @@ public class SimuladorGUI extends JFrame {
 
             // Zona de kernel: color fijo azulado
             if (row < limiteKernel) {
-                c.setBackground(COLOR_KERNEL); c.setForeground(Color.WHITE); return c;
+                c.setBackground(COLOR_KERNEL);
+                c.setForeground(Color.WHITE);
+                return c;
             }
 
             // ¿Esta fila es el PC activo de alguna CPU?
@@ -1343,18 +1455,25 @@ public class SimuladorGUI extends JFrame {
                         }
                     } else {
                         // Fila ocupada por proceso pero no es el PC activo
-                        c.setBackground(colorSuave(colorPid)); c.setForeground(Color.BLACK);
+                        c.setBackground(colorSuave(colorPid));
+                        c.setForeground(Color.BLACK);
                     }
                 } else {
                     // Fragmentación interna
-                    c.setBackground(new Color(45, 40, 40)); c.setForeground(new Color(230, 100, 100));
-                    if (column == 1) setText("❌ [Frag. Interna - Bloque de PID " + proc.id + "]");
+                    c.setBackground(new Color(45, 40, 40));
+                    c.setForeground(new Color(230, 100, 100));
+                    if (column == 1)
+                        setText("❌ [Frag. Interna - Bloque de PID " + proc.id + "]");
                 }
             } else {
-                c.setBackground(COLOR_LIBRE); c.setForeground(COLOR_TEXTO_LIBRE);
+                c.setBackground(COLOR_LIBRE);
+                c.setForeground(COLOR_TEXTO_LIBRE);
             }
 
-            if (isSelected) { c.setBackground(c.getBackground().darker()); c.setForeground(Color.WHITE); }
+            if (isSelected) {
+                c.setBackground(c.getBackground().darker());
+                c.setForeground(Color.WHITE);
+            }
             return c;
         }
     }
@@ -1365,28 +1484,39 @@ public class SimuladorGUI extends JFrame {
                 boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             try {
-                int    pid    = Integer.parseInt(table.getValueAt(row, 0).toString());
+                int pid = Integer.parseInt(table.getValueAt(row, 0).toString());
                 String estado = table.getValueAt(row, 2).toString();
-                Color  colorPid = obtenerColorProceso(pid);
+                Color colorPid = obtenerColorProceso(pid);
                 if ("EJECUCION".equalsIgnoreCase(estado) || estado.toUpperCase().startsWith("EJECUCION (CPU")) {
-                    c.setBackground(colorPid); c.setForeground(Color.BLACK); c.setFont(c.getFont().deriveFont(Font.BOLD));
+                    c.setBackground(colorPid);
+                    c.setForeground(Color.BLACK);
+                    c.setFont(c.getFont().deriveFont(Font.BOLD));
                 } else if ("ERROR".equalsIgnoreCase(estado)) {
-                    c.setBackground(new Color(170, 60, 60)); c.setForeground(Color.WHITE);
+                    c.setBackground(new Color(170, 60, 60));
+                    c.setForeground(Color.WHITE);
                 } else if ("TERMINADO".equalsIgnoreCase(estado)) {
-                    c.setBackground(new Color(90, 90, 90)); c.setForeground(Color.WHITE);
+                    c.setBackground(new Color(90, 90, 90));
+                    c.setForeground(Color.WHITE);
                 } else {
-                    c.setBackground(colorSuave(colorPid)); c.setForeground(Color.BLACK);
+                    c.setBackground(colorSuave(colorPid));
+                    c.setForeground(Color.BLACK);
                 }
             } catch (Exception e) {
-                c.setBackground(new Color(30, 30, 30)); c.setForeground(Color.WHITE);
+                c.setBackground(new Color(30, 30, 30));
+                c.setForeground(Color.WHITE);
             }
-            if (isSelected) { c.setBackground(c.getBackground().darker()); c.setForeground(Color.WHITE); }
+            if (isSelected) {
+                c.setBackground(c.getBackground().darker());
+                c.setForeground(Color.WHITE);
+            }
             return c;
         }
     }
 
     class ParticionTableRenderer extends DefaultTableCellRenderer {
-        ParticionTableRenderer() { setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8)); }
+        ParticionTableRenderer() {
+            setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        }
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
@@ -1397,7 +1527,8 @@ public class SimuladorGUI extends JFrame {
             try {
                 String estadoStr = table.getValueAt(row, 4).toString();
                 if (estadoStr.contains("LIBRE")) {
-                    c.setBackground(new Color(28, 48, 28)); c.setForeground(new Color(80, 255, 80));
+                    c.setBackground(new Color(28, 48, 28));
+                    c.setForeground(new Color(80, 255, 80));
                     c.setFont((column == 4) ? c.getFont().deriveFont(Font.BOLD) : table.getFont());
                 } else {
                     String[] partes = estadoStr.split("PID: ");
@@ -1407,15 +1538,19 @@ public class SimuladorGUI extends JFrame {
                     Color fg = (partes.length > 1) ? new Color(20, 20, 20) : Color.WHITE;
 
                     if ("DINAMICA".equalsIgnoreCase(tipoMemoriaConfig)) {
-                        c.setBackground(base); c.setForeground(fg); return c;
+                        c.setBackground(base);
+                        c.setForeground(fg);
+                        return c;
                     }
 
                     if (column == 6 && partes.length > 1) {
                         String desp = table.getValueAt(row, 6).toString();
                         if (!desp.equals("---") && !desp.startsWith("0 ")) {
-                            c.setBackground(new Color(90, 35, 35)); c.setForeground(new Color(255, 120, 120));
+                            c.setBackground(new Color(90, 35, 35));
+                            c.setForeground(new Color(255, 120, 120));
                             c.setFont(c.getFont().deriveFont(Font.BOLD));
-                            if (isSelected) c.setBackground(c.getBackground().darker());
+                            if (isSelected)
+                                c.setBackground(c.getBackground().darker());
                             return c;
                         }
                     }
@@ -1423,26 +1558,35 @@ public class SimuladorGUI extends JFrame {
                     if (column == 5 && partes.length > 1) {
                         String util = table.getValueAt(row, 5).toString();
                         if (util.contains("100.0%")) {
-                            c.setBackground(new Color(28, 60, 28)); c.setForeground(new Color(80, 255, 80));
+                            c.setBackground(new Color(28, 60, 28));
+                            c.setForeground(new Color(80, 255, 80));
                             c.setFont(c.getFont().deriveFont(Font.BOLD));
-                            if (isSelected) c.setBackground(c.getBackground().darker());
+                            if (isSelected)
+                                c.setBackground(c.getBackground().darker());
                             return c;
                         }
                     }
 
-                    c.setBackground(base); c.setForeground(fg);
+                    c.setBackground(base);
+                    c.setForeground(fg);
                     c.setFont((column == 4) ? c.getFont().deriveFont(Font.BOLD) : table.getFont());
                 }
             } catch (Exception e) {
-                c.setBackground(new Color(35, 35, 35)); c.setForeground(Color.WHITE); c.setFont(table.getFont());
+                c.setBackground(new Color(35, 35, 35));
+                c.setForeground(Color.WHITE);
+                c.setFont(table.getFont());
             }
 
-            if (isSelected) { c.setBackground(c.getBackground().darker()); c.setForeground(Color.WHITE); }
+            if (isSelected) {
+                c.setBackground(c.getBackground().darker());
+                c.setForeground(Color.WHITE);
+            }
             return c;
         }
     }
-    public void agregarProcesoListaFinalizados(BCP proceso){
+
+    public void agregarProcesoListaFinalizados(BCP proceso) {
         this.BCPFinalizados.add(proceso);
     }
-    
+
 }
